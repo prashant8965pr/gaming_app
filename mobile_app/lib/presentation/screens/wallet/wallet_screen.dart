@@ -13,6 +13,7 @@ import '../../widgets/empty_state.dart';
 import '../../widgets/custom_button.dart' as custom;
 import '../../widgets/dialogs/add_money_dialog.dart';
 import '../../widgets/dialogs/withdraw_money_dialog.dart';
+import '../transaction/transaction_details_screen.dart';
 
 /// Wallet screen displaying balance and transactions
 class WalletScreen extends StatefulWidget {
@@ -369,7 +370,14 @@ class _WalletScreenState extends State<WalletScreen>
   }
 
   void _showTransactionDetails(String transactionId) {
-    // TODO: Navigate to transaction details
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TransactionDetailsScreen(
+          transactionId: transactionId,
+        ),
+      ),
+    );
   }
 
   Future<void> _onRefresh() async {
