@@ -20,6 +20,10 @@ import '../../domain/repositories/game_repository.dart';
 import '../../domain/repositories/user_repository.dart';
 import '../../domain/repositories/wallet_repository.dart';
 import '../../presentation/bloc/auth/auth_bloc.dart';
+import '../../presentation/bloc/user/user_bloc.dart';
+import '../../presentation/bloc/wallet/wallet_bloc.dart';
+import '../../presentation/bloc/game/game_bloc.dart';
+import '../../presentation/bloc/theme/theme_bloc.dart';
 import '../network/dio_client.dart';
 import '../storage/hive_config.dart';
 import '../storage/local_storage.dart';
@@ -168,8 +172,19 @@ Future<void> initDependencies() async {
     () => AuthBloc(authRepository: sl<AuthRepository>()),
   );
 
-  // TODO: Register other BLoCs here as they are created
-  // sl.registerFactory<UserBloc>(() => UserBloc(userRepository: sl()));
-  // sl.registerFactory<WalletBloc>(() => WalletBloc(walletRepository: sl()));
-  // sl.registerFactory<GameBloc>(() => GameBloc(gameRepository: sl()));
+  sl.registerFactory<UserBloc>(
+    () => UserBloc(userRepository: sl<UserRepository>()),
+  );
+
+  sl.registerFactory<WalletBloc>(
+    () => WalletBloc(walletRepository: sl<WalletRepository>()),
+  );
+
+  sl.registerFactory<GameBloc>(
+    () => GameBloc(gameRepository: sl<GameRepository>()),
+  );
+
+  sl.registerFactory<ThemeBloc>(
+    () => ThemeBloc(localStorage: sl<LocalStorage>()),
+  );
 }

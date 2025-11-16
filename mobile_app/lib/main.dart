@@ -6,6 +6,12 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
 import 'presentation/bloc/auth/auth_bloc.dart';
+import 'presentation/bloc/user/user_bloc.dart';
+import 'presentation/bloc/wallet/wallet_bloc.dart';
+import 'presentation/bloc/game/game_bloc.dart';
+import 'presentation/bloc/theme/theme_bloc.dart';
+import 'presentation/bloc/theme/theme_event.dart';
+import 'presentation/bloc/theme/theme_state.dart';
 
 void main() async {
   // Ensure Flutter binding is initialized
@@ -56,20 +62,29 @@ class MyApp extends StatelessWidget {
         BlocProvider<AuthBloc>(
           create: (_) => sl<AuthBloc>(),
         ),
-        // TODO: Add other BLoC providers here as they are created
-        // BlocProvider(create: (context) => sl<ThemeBloc>()),
-        // BlocProvider(create: (context) => sl<UserBloc>()),
-        // BlocProvider(create: (context) => sl<WalletBloc>()),
-        // BlocProvider(create: (context) => sl<GameBloc>()),
+        BlocProvider<ThemeBloc>(
+          create: (_) => sl<ThemeBloc>()..add(const LoadSavedThemeEvent()),
+        ),
+        BlocProvider<UserBloc>(
+          create: (_) => sl<UserBloc>(),
+        ),
+        BlocProvider<WalletBloc>(
+          create: (_) => sl<WalletBloc>(),
+        ),
+        BlocProvider<GameBloc>(
+          create: (_) => sl<GameBloc>(),
+        ),
       ],
-      child: MaterialApp.router(
-        title: AppConstants.appName,
-        debugShowCheckedModeBanner: false,
+      child: BlocBuilder<ThemeBloc, ThemeState>(
+        builder: (context, themeState) {
+          return MaterialApp.router(
+            title: AppConstants.appName,
+            debugShowCheckedModeBanner: false,
 
-        // Theme
-        theme: AppTheme.lightTheme(),
-        darkTheme: AppTheme.darkTheme(),
-        themeMode: ThemeMode.light, // TODO: Get from ThemeBloc
+            // Theme
+            theme: AppTheme.lightTheme(),
+            darkTheme: AppTheme.darkTheme(),
+            themeMode: themeState.themeMode,
 
         // Router
         routerConfig: AppRouter.router,
@@ -86,6 +101,8 @@ class MyApp extends StatelessWidget {
           return MediaQuery(
             data: MediaQuery.of(context).copyWith(textScaleFactor: 1.0),
             child: child!,
+          );
+        },
           );
         },
       ),
