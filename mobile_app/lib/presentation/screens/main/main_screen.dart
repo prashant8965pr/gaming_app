@@ -3,6 +3,8 @@ import '../../../core/theme/app_colors.dart';
 import '../home/home_screen.dart';
 import '../wallet/wallet_screen.dart';
 import '../profile/profile_screen.dart';
+import '../games/games_browse_screen.dart';
+import '../rewards/rewards_screen.dart';
 
 /// Main screen with bottom navigation
 class MainScreen extends StatefulWidget {
@@ -17,9 +19,9 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _screens = [
     const HomeScreen(),
-    const _GamesTabPlaceholder(),
+    const GamesBrowseScreen(),
     const WalletScreen(),
-    const _RewardsTabPlaceholder(),
+    const RewardsScreen(),
     const ProfileScreen(),
   ];
 

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/router/app_router.dart';
 import '../../bloc/game/game_bloc.dart';
 import '../../bloc/game/game_event.dart';
 import '../../bloc/game/game_state.dart';
@@ -86,7 +88,7 @@ class _HomeScreenState extends State<HomeScreen> {
         IconButton(
           icon: const Icon(Icons.notifications_outlined),
           onPressed: () {
-            // TODO: Navigate to notifications
+            context.push(AppRouter.notifications);
           },
         ),
       ],

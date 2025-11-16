@@ -6,6 +6,7 @@ import '../../presentation/screens/auth/login_screen.dart';
 import '../../presentation/screens/auth/otp_verification_screen.dart';
 import '../../presentation/screens/auth/profile_setup_screen.dart';
 import '../../presentation/screens/main/main_screen.dart';
+import '../../presentation/screens/notifications/notifications_screen.dart';
 
 /// App router configuration
 class AppRouter {
@@ -44,6 +45,7 @@ class AppRouter {
   static const String settings = '/profile/settings';
   static const String twoFactorAuth = '/profile/2fa';
   static const String helpSupport = '/profile/help';
+  static const String notifications = '/notifications';
 
   // Rewards routes
   static const String referral = '/rewards/referral';
@@ -195,6 +197,11 @@ class AppRouter {
         path: helpSupport,
         name: 'help-support',
         builder: (context, state) => Container(), // HelpSupportScreen(),
+      ),
+      GoRoute(
+        path: notifications,
+        name: 'notifications',
+        builder: (context, state) => const NotificationsScreen(),
       ),
 
       // Rewards Routes
