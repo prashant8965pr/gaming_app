@@ -20,7 +20,7 @@ from middleware.error_handler import (
 from middleware.logging_middleware import LoggingMiddleware
 
 # Import API routers
-from api.v1 import auth, users, kyc, bank, wallet, admin, rewards, games
+from api.v1 import auth, users, kyc, bank, wallet, admin, rewards, games, websocket
 
 
 @asynccontextmanager
@@ -48,14 +48,95 @@ async def lifespan(app: FastAPI):
     await close_db()
 
 
-# Create FastAPI app
+# Create FastAPI app with comprehensive documentation
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    description="Multi-game skill gaming platform API",
+    description="""
+    # Gaming Platform API
+
+    A comprehensive multi-game skill gaming platform with real-time features.
+
+    ## Features
+
+    * **Authentication** - OTP-based authentication with JWT tokens
+    * **User Management** - Complete user profiles and statistics
+    * **KYC Verification** - Document verification system
+    * **Multi-Wallet System** - Cash, Bonus, and Winnings wallets
+    * **Payment Integration** - Deposits and withdrawals with payment gateway
+    * **Game Management** - Multiple game types with session management
+    * **Real-time Features** - WebSocket support for live gameplay
+    * **Referral Program** - User referrals with rewards
+    * **Achievements & Leaderboard** - Gamification features
+    * **Admin Panel** - Complete admin dashboard and management
+
+    ## Authentication
+
+    Most endpoints require authentication using JWT tokens. Include the token in the `Authorization` header:
+
+    ```
+    Authorization: Bearer <your-jwt-token>
+    ```
+
+    ## Rate Limiting
+
+    API requests are rate-limited to prevent abuse. Default limits:
+    - 60 requests per minute
+    - 1000 requests per hour
+
+    ## Error Handling
+
+    All errors follow a consistent format:
+
+    ```json
+    {
+      "success": false,
+      "error": {
+        "code": "ERROR_CODE",
+        "message": "Human-readable error message",
+        "details": {}
+      }
+    }
+    ```
+
+    ## Pagination
+
+    List endpoints support pagination with query parameters:
+    - `skip`: Number of items to skip (default: 0)
+    - `limit`: Number of items to return (default: 20, max: 100)
+
+    ## WebSocket Endpoints
+
+    Real-time features are available via WebSocket connections:
+    - `/api/v1/ws/game/{game_session_id}` - Live game sessions
+    - `/api/v1/ws/notifications` - Real-time notifications
+
+    WebSocket connections require token authentication via query parameter: `?token=<jwt-token>`
+    """,
     docs_url="/docs" if settings.DEBUG else None,
     redoc_url="/redoc" if settings.DEBUG else None,
-    lifespan=lifespan
+    openapi_url="/api/v1/openapi.json",
+    contact={
+        "name": "Gaming Platform Support",
+        "email": "support@gamingplatform.com",
+        "url": "https://gamingplatform.com/support"
+    },
+    license_info={
+        "name": "Proprietary",
+        "url": "https://gamingplatform.com/license"
+    },
+    terms_of_service="https://gamingplatform.com/terms",
+    lifespan=lifespan,
+    servers=[
+        {
+            "url": "http://localhost:8000",
+            "description": "Development server"
+        },
+        {
+            "url": "https://api.gamingplatform.com",
+            "description": "Production server"
+        }
+    ]
 )
 
 # CORS Middleware
@@ -120,6 +201,7 @@ app.include_router(wallet.router, prefix="/api/v1/wallet", tags=["Wallet"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
 app.include_router(rewards.router, prefix="/api/v1/rewards", tags=["Rewards"])
 app.include_router(games.router, prefix="/api/v1/games", tags=["Games"])
+app.include_router(websocket.router, prefix="/api/v1", tags=["WebSocket"])
 
 
 # Mount static files for uploads (local storage)

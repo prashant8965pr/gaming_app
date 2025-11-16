@@ -357,3 +357,44 @@ async def logout(
         "success": True,
         "message": "Logged out successfully"
     }
+
+
+async def get_current_user_ws(token: str, db: AsyncSession) -> User:
+    """
+    Get current user from WebSocket token
+    Used for WebSocket authentication
+
+    Args:
+        token: JWT access token
+        db: Database session
+
+    Returns:
+        User object
+
+    Raises:
+        Exception: If token is invalid or user not found
+    """
+    try:
+        # Decode token
+        payload = decode_token(token)
+        user_id = payload.get("sub")
+
+        if not user_id:
+            raise InvalidTokenError("Invalid token payload")
+
+        # Get user from database
+        result = await db.execute(
+            select(User).where(User.id == user_id)
+        )
+        user = result.scalar_one_or_none()
+
+        if not user:
+            raise UserNotFoundError("User not found")
+
+        if user.status != "active":
+            raise Exception(f"User account is {user.status}")
+
+        return user
+
+    except Exception as e:
+        raise Exception(f"Authentication failed: {str(e)}")

@@ -99,6 +99,66 @@ services:
         max_attempts: 3
         window: 120s
 
+  # Frontend User App
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: gaming-frontend:latest
+    container_name: gaming_frontend_prod
+    restart: always
+    environment:
+      NEXT_PUBLIC_API_URL: ${API_URL}
+      NEXT_PUBLIC_API_BASE_PATH: /api/v1
+    networks:
+      - gaming_network
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # Frontend Admin Panel
+  frontend-admin:
+    build:
+      context: ./frontend-admin
+      dockerfile: Dockerfile
+    image: gaming-admin:latest
+    container_name: gaming_admin_prod
+    restart: always
+    environment:
+      NEXT_PUBLIC_API_URL: ${API_URL}
+      NEXT_PUBLIC_APP_NAME: Gaming Platform Admin
+      NEXT_PUBLIC_APP_VERSION: 1.0.0
+    networks:
+      - gaming_network
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
   # Nginx Reverse Proxy
   nginx:
     image: nginx:alpine
@@ -117,6 +177,8 @@ services:
       - gaming_network
     depends_on:
       - backend
+      - frontend
+      - frontend-admin
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
       interval: 30s
