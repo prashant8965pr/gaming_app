@@ -3,6 +3,7 @@ User Models
 SQLAlchemy models for user-related tables
 """
 from sqlalchemy import Column, String, Boolean, DateTime, Integer, ForeignKey, Index
+from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from config.database import Base
@@ -38,6 +39,11 @@ class User(Base):
         Index('idx_status', 'status'),
         Index('idx_kyc_status', 'kyc_status'),
     )
+
+    # Relationships
+    two_factor_auth = relationship("TwoFactorAuth", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    backup_codes = relationship("TwoFactorBackupCode", back_populates="user", cascade="all, delete-orphan")
+    promo_code_usages = relationship("PromoCodeUsage", back_populates="user", cascade="all, delete-orphan")
 
     @property
     def is_admin(self) -> bool:

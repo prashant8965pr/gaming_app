@@ -20,7 +20,7 @@ from middleware.error_handler import (
 from middleware.logging_middleware import LoggingMiddleware
 
 # Import API routers
-from api.v1 import auth, users, kyc, bank, wallet, admin, rewards, games, websocket
+from api.v1 import auth, users, kyc, bank, wallet, admin, rewards, games, websocket, two_factor, promo_codes
 
 
 @asynccontextmanager
@@ -60,6 +60,7 @@ app = FastAPI(
     ## Features
 
     * **Authentication** - OTP-based authentication with JWT tokens
+    * **Two-Factor Authentication** - TOTP-based 2FA with backup codes for enhanced security
     * **User Management** - Complete user profiles and statistics
     * **KYC Verification** - Document verification system
     * **Multi-Wallet System** - Cash, Bonus, and Winnings wallets
@@ -67,6 +68,8 @@ app = FastAPI(
     * **Game Management** - Multiple game types with session management
     * **Real-time Features** - WebSocket support for live gameplay
     * **Referral Program** - User referrals with rewards
+    * **Promo Code System** - Marketing campaigns with flexible discount types
+    * **Email Notifications** - Transactional emails for all major events
     * **Achievements & Leaderboard** - Gamification features
     * **Admin Panel** - Complete admin dashboard and management
 
@@ -202,6 +205,8 @@ app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
 app.include_router(rewards.router, prefix="/api/v1/rewards", tags=["Rewards"])
 app.include_router(games.router, prefix="/api/v1/games", tags=["Games"])
 app.include_router(websocket.router, prefix="/api/v1", tags=["WebSocket"])
+app.include_router(two_factor.router, prefix="/api/v1/2fa", tags=["Two-Factor Authentication"])
+app.include_router(promo_codes.router, prefix="/api/v1", tags=["Promo Codes"])
 
 
 # Mount static files for uploads (local storage)
