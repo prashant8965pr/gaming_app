@@ -11,6 +11,8 @@ import '../../widgets/loading_indicator.dart';
 import '../../widgets/error_widget.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/custom_button.dart' as custom;
+import '../../widgets/dialogs/add_money_dialog.dart';
+import '../../widgets/dialogs/withdraw_money_dialog.dart';
 
 /// Wallet screen displaying balance and transactions
 class WalletScreen extends StatefulWidget {
@@ -335,17 +337,35 @@ class _WalletScreenState extends State<WalletScreen>
   }
 
   void _showAddMoneyDialog() {
-    // TODO: Show add money dialog
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Add money feature coming soon!')),
+    showDialog(
+      context: context,
+      builder: (context) => const AddMoneyDialog(),
     );
   }
 
   void _showWithdrawDialog() {
-    // TODO: Show withdraw dialog
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Withdraw feature coming soon!')),
-    );
+    final state = context.read<WalletBloc>().state;
+
+    if (state is WalletBalanceLoaded) {
+      if (state.balance.winningsBalance < 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Minimum withdrawal amount is ₹200'),
+            backgroundColor: AppColors.warning,
+          ),
+        );
+        return;
+      }
+
+      showDialog(
+        context: context,
+        builder: (context) => WithdrawMoneyDialog(balance: state.balance),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please wait, loading wallet balance...')),
+      );
+    }
   }
 
   void _showTransactionDetails(String transactionId) {

@@ -14,6 +14,7 @@ import '../../widgets/error_widget.dart';
 import '../../widgets/empty_state.dart';
 import '../../../data/models/game_model.dart';
 import '../../../core/utils/formatters.dart';
+import '../../widgets/dialogs/add_money_dialog.dart';
 
 /// Home screen displaying game catalog and wallet balance
 class HomeScreen extends StatefulWidget {
@@ -149,7 +150,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   ElevatedButton(
                     onPressed: () {
-                      // TODO: Navigate to add money
+                      showDialog(
+                        context: context,
+                        builder: (context) => const AddMoneyDialog(),
+                      );
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
