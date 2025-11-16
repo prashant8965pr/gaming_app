@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'core/di/service_locator.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
+import 'presentation/bloc/auth/auth_bloc.dart';
 
 void main() async {
   // Ensure Flutter binding is initialized
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Hive for local storage
-  await Hive.initFlutter();
+  // Initialize dependency injection
+  await initDependencies();
 
   // Set preferred orientations (portrait only)
   await SystemChrome.setPreferredOrientations([
@@ -52,11 +53,14 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        // TODO: Add BLoC providers here
-        // BlocProvider(create: (context) => AuthBloc()),
-        // BlocProvider(create: (context) => ThemeBloc()),
-        // BlocProvider(create: (context) => UserBloc()),
-        // etc.
+        BlocProvider<AuthBloc>(
+          create: (_) => sl<AuthBloc>(),
+        ),
+        // TODO: Add other BLoC providers here as they are created
+        // BlocProvider(create: (context) => sl<ThemeBloc>()),
+        // BlocProvider(create: (context) => sl<UserBloc>()),
+        // BlocProvider(create: (context) => sl<WalletBloc>()),
+        // BlocProvider(create: (context) => sl<GameBloc>()),
       ],
       child: MaterialApp.router(
         title: AppConstants.appName,
