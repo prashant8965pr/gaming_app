@@ -21,6 +21,7 @@ class User(Base):
     display_name = Column(String(100), nullable=True)
     avatar_url = Column(String(500), nullable=True)
     date_of_birth = Column(DateTime, nullable=True)
+    role = Column(String(20), default="user", nullable=False)  # user, admin, superadmin
     status = Column(String(20), default="active", nullable=False)  # active, suspended, banned
     kyc_status = Column(String(20), default="pending", nullable=False)  # pending, verified, rejected
     is_email_verified = Column(Boolean, default=False)
@@ -33,9 +34,20 @@ class User(Base):
 
     # Indexes
     __table_args__ = (
+        Index('idx_role', 'role'),
         Index('idx_status', 'status'),
         Index('idx_kyc_status', 'kyc_status'),
     )
+
+    @property
+    def is_admin(self) -> bool:
+        """Check if user has admin privileges"""
+        return self.role in ['admin', 'superadmin']
+
+    @property
+    def is_superadmin(self) -> bool:
+        """Check if user is a superadmin"""
+        return self.role == 'superadmin'
 
 
 class UserSession(Base):

@@ -35,16 +35,11 @@ router = APIRouter()
 
 async def _check_admin_permissions(current_user: User):
     """Check if user has admin permissions"""
-    # In production, check user role from database
-    # For now, simple check (you can add admin role to User model)
-    if not hasattr(current_user, 'is_admin') or not current_user.is_admin:
-        # Temporary: Allow all for development
-        # In production, uncomment this:
-        # raise HTTPException(
-        #     status_code=status.HTTP_403_FORBIDDEN,
-        #     detail="Admin access required"
-        # )
-        pass
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
 
 
 # ============================================================================
@@ -603,4 +598,449 @@ async def adjust_user_balance(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Balance adjustment failed: {str(e)}"
+        )
+
+
+# ============================================================================
+# Dashboard Statistics Endpoints
+# ============================================================================
+
+@router.get("/dashboard/stats", response_model=Dict[str, Any])
+async def get_dashboard_stats(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get admin dashboard statistics
+    """
+    await _check_admin_permissions(current_user)
+
+    try:
+        from models.game import GameSession
+        from datetime import timedelta
+
+        # Total users count
+        total_users_result = await db.execute(select(func.count()).select_from(User))
+        total_users = total_users_result.scalar()
+
+        # Active users (logged in last 7 days)
+        seven_days_ago = datetime.utcnow() - timedelta(days=7)
+        active_users_result = await db.execute(
+            select(func.count()).select_from(User).where(User.last_login_at >= seven_days_ago)
+        )
+        active_users = active_users_result.scalar()
+
+        # New users today
+        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        new_users_today_result = await db.execute(
+            select(func.count()).select_from(User).where(User.created_at >= today_start)
+        )
+        new_users_today = new_users_today_result.scalar()
+
+        # Suspended/Banned users
+        suspended_users_result = await db.execute(
+            select(func.count()).select_from(User).where(User.status.in_(["suspended", "banned"]))
+        )
+        suspended_users = suspended_users_result.scalar()
+
+        # KYC statistics
+        pending_kyc_result = await db.execute(
+            select(func.count()).select_from(KYCDocument).where(KYCDocument.status.in_(["pending", "under_review"]))
+        )
+        pending_kyc = pending_kyc_result.scalar()
+
+        approved_kyc_result = await db.execute(
+            select(func.count()).select_from(User).where(User.kyc_status == "verified")
+        )
+        approved_kyc = approved_kyc_result.scalar()
+
+        # Withdrawal statistics
+        pending_withdrawals_result = await db.execute(
+            select(func.count()).select_from(WithdrawalRequest).where(WithdrawalRequest.status.in_(["pending", "processing"]))
+        )
+        pending_withdrawals = pending_withdrawals_result.scalar()
+
+        pending_withdrawal_amount_result = await db.execute(
+            select(func.sum(WithdrawalRequest.final_amount)).where(WithdrawalRequest.status.in_(["pending", "processing"]))
+        )
+        pending_withdrawal_amount = pending_withdrawal_amount_result.scalar() or 0
+
+        # Transaction statistics (today)
+        total_deposits_today_result = await db.execute(
+            select(func.sum(Transaction.amount)).where(
+                and_(
+                    Transaction.transaction_type == "deposit",
+                    Transaction.status == "completed",
+                    Transaction.created_at >= today_start
+                )
+            )
+        )
+        total_deposits_today = total_deposits_today_result.scalar() or 0
+
+        total_withdrawals_today_result = await db.execute(
+            select(func.sum(Transaction.amount)).where(
+                and_(
+                    Transaction.transaction_type == "withdrawal",
+                    Transaction.status == "completed",
+                    Transaction.created_at >= today_start
+                )
+            )
+        )
+        total_withdrawals_today = total_withdrawals_today_result.scalar() or 0
+
+        # Game session statistics
+        active_sessions_result = await db.execute(
+            select(func.count()).select_from(GameSession).where(GameSession.status.in_(["waiting", "in_progress"]))
+        )
+        active_sessions = active_sessions_result.scalar()
+
+        # Total revenue (all time)
+        total_revenue_result = await db.execute(
+            select(func.sum(Transaction.amount)).where(
+                and_(
+                    Transaction.transaction_type == "deposit",
+                    Transaction.status == "completed"
+                )
+            )
+        )
+        total_revenue = total_revenue_result.scalar() or 0
+
+        return {
+            "success": True,
+            "data": {
+                "users": {
+                    "total": total_users,
+                    "active": active_users,
+                    "new_today": new_users_today,
+                    "suspended": suspended_users
+                },
+                "kyc": {
+                    "pending": pending_kyc,
+                    "approved": approved_kyc
+                },
+                "withdrawals": {
+                    "pending_count": pending_withdrawals,
+                    "pending_amount": pending_withdrawal_amount / 100.0
+                },
+                "transactions": {
+                    "deposits_today": total_deposits_today / 100.0,
+                    "withdrawals_today": total_withdrawals_today / 100.0,
+                    "revenue_total": total_revenue / 100.0
+                },
+                "sessions": {
+                    "active": active_sessions
+                }
+            }
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get dashboard stats: {str(e)}"
+        )
+
+
+# ============================================================================
+# User Management Endpoints
+# ============================================================================
+
+@router.get("/users", response_model=Dict[str, Any])
+async def get_all_users(
+    limit: int = 50,
+    offset: int = 0,
+    search: str = None,
+    status_filter: str = None,
+    kyc_status_filter: str = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get list of all users with filtering and pagination
+    """
+    await _check_admin_permissions(current_user)
+
+    try:
+        from models.user import UserStatistics
+
+        # Build query
+        query = select(User)
+
+        # Apply filters
+        if search:
+            search_pattern = f"%{search}%"
+            query = query.where(
+                (User.username.ilike(search_pattern)) |
+                (User.email.ilike(search_pattern)) |
+                (User.phone.ilike(search_pattern))
+            )
+
+        if status_filter:
+            query = query.where(User.status == status_filter)
+
+        if kyc_status_filter:
+            query = query.where(User.kyc_status == kyc_status_filter)
+
+        # Get total count
+        count_query = select(func.count()).select_from(User)
+        if search:
+            search_pattern = f"%{search}%"
+            count_query = count_query.where(
+                (User.username.ilike(search_pattern)) |
+                (User.email.ilike(search_pattern)) |
+                (User.phone.ilike(search_pattern))
+            )
+        if status_filter:
+            count_query = count_query.where(User.status == status_filter)
+        if kyc_status_filter:
+            count_query = count_query.where(User.kyc_status == kyc_status_filter)
+
+        total_count_result = await db.execute(count_query)
+        total_count = total_count_result.scalar()
+
+        # Apply pagination
+        query = query.order_by(User.created_at.desc()).offset(offset).limit(limit)
+
+        # Execute query
+        result = await db.execute(query)
+        users = result.scalars().all()
+
+        # Build response
+        users_data = []
+        for user in users:
+            # Get user statistics
+            stats_result = await db.execute(
+                select(UserStatistics).where(UserStatistics.user_id == user.id)
+            )
+            stats = stats_result.scalar_one_or_none()
+
+            # Get wallet balances
+            wallets_result = await db.execute(
+                select(Wallet).where(Wallet.user_id == user.id)
+            )
+            wallets = wallets_result.scalars().all()
+            total_balance = sum(w.balance for w in wallets)
+
+            users_data.append({
+                "id": str(user.id),
+                "username": user.username,
+                "email": user.email,
+                "phone": user.phone,
+                "display_name": user.display_name,
+                "role": user.role,
+                "status": user.status,
+                "kyc_status": user.kyc_status,
+                "is_email_verified": user.is_email_verified,
+                "is_phone_verified": user.is_phone_verified,
+                "total_balance": total_balance / 100.0 if total_balance else 0.0,
+                "games_played": stats.total_games_played if stats else 0,
+                "total_winnings": stats.total_winnings / 100.0 if stats else 0.0,
+                "created_at": user.created_at,
+                "last_login_at": user.last_login_at
+            })
+
+        return {
+            "success": True,
+            "data": {
+                "users": users_data,
+                "total_count": total_count,
+                "limit": limit,
+                "offset": offset
+            }
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get users: {str(e)}"
+        )
+
+
+@router.get("/users/{user_id}", response_model=Dict[str, Any])
+async def get_user_details(
+    user_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get detailed information about a specific user
+    """
+    await _check_admin_permissions(current_user)
+
+    try:
+        from models.user import UserStatistics, UserProfile
+
+        # Get user
+        result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
+        user = result.scalar_one_or_none()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+
+        # Get user statistics
+        stats_result = await db.execute(
+            select(UserStatistics).where(UserStatistics.user_id == user.id)
+        )
+        stats = stats_result.scalar_one_or_none()
+
+        # Get user profile
+        profile_result = await db.execute(
+            select(UserProfile).where(UserProfile.user_id == user.id)
+        )
+        profile = profile_result.scalar_one_or_none()
+
+        # Get wallets
+        wallets_result = await db.execute(
+            select(Wallet).where(Wallet.user_id == user.id)
+        )
+        wallets = wallets_result.scalars().all()
+
+        wallets_data = [
+            {
+                "wallet_type": w.wallet_type,
+                "balance": w.balance / 100.0
+            }
+            for w in wallets
+        ]
+
+        # Get recent transactions
+        recent_txns_result = await db.execute(
+            select(Transaction)
+            .where(Transaction.user_id == user.id)
+            .order_by(Transaction.created_at.desc())
+            .limit(10)
+        )
+        recent_txns = recent_txns_result.scalars().all()
+
+        transactions_data = [
+            {
+                "id": str(t.id),
+                "type": t.transaction_type,
+                "amount": t.amount / 100.0,
+                "status": t.status,
+                "description": t.description,
+                "created_at": t.created_at
+            }
+            for t in recent_txns
+        ]
+
+        return {
+            "success": True,
+            "data": {
+                "user": {
+                    "id": str(user.id),
+                    "username": user.username,
+                    "email": user.email,
+                    "phone": user.phone,
+                    "display_name": user.display_name,
+                    "avatar_url": user.avatar_url,
+                    "date_of_birth": user.date_of_birth,
+                    "role": user.role,
+                    "status": user.status,
+                    "kyc_status": user.kyc_status,
+                    "is_email_verified": user.is_email_verified,
+                    "is_phone_verified": user.is_phone_verified,
+                    "referral_code": user.referral_code,
+                    "created_at": user.created_at,
+                    "last_login_at": user.last_login_at
+                },
+                "statistics": {
+                    "total_games_played": stats.total_games_played if stats else 0,
+                    "total_games_won": stats.total_games_won if stats else 0,
+                    "total_games_lost": stats.total_games_lost if stats else 0,
+                    "total_winnings": stats.total_winnings / 100.0 if stats else 0.0,
+                    "total_spent": stats.total_spent / 100.0 if stats else 0.0,
+                    "current_level": stats.current_level if stats else 1,
+                    "experience_points": stats.experience_points if stats else 0
+                } if stats else None,
+                "profile": {
+                    "bio": profile.bio if profile else None,
+                    "state": profile.state if profile else None,
+                    "city": profile.city if profile else None,
+                    "pincode": profile.pincode if profile else None
+                } if profile else None,
+                "wallets": wallets_data,
+                "recent_transactions": transactions_data
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get user details: {str(e)}"
+        )
+
+
+@router.put("/users/{user_id}/status", response_model=Dict[str, Any])
+async def update_user_status(
+    user_id: str,
+    status_update: str,
+    reason: str = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Update user status (active, suspended, banned)
+    """
+    await _check_admin_permissions(current_user)
+
+    try:
+        # Validate status
+        valid_statuses = ["active", "suspended", "banned"]
+        if status_update not in valid_statuses:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
+            )
+
+        # Get user
+        result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
+        user = result.scalar_one_or_none()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+
+        # Prevent modifying superadmin status
+        if user.is_superadmin:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cannot modify superadmin status"
+            )
+
+        # Update status
+        old_status = user.status
+        user.status = status_update
+
+        await db.commit()
+        await db.refresh(user)
+
+        # Log the action (you can create an admin_actions table for this)
+        # For now, we'll just return success
+
+        return {
+            "success": True,
+            "data": {
+                "message": f"User status updated from {old_status} to {status_update}",
+                "user": {
+                    "id": str(user.id),
+                    "username": user.username,
+                    "status": user.status
+                }
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update user status: {str(e)}"
         )
