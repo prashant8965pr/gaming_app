@@ -20,7 +20,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+backend/lib/
 lib64/
 parts/
 sdist/
@@ -91,10 +91,15 @@ nginx/ssl/*.key
 nginx/ssl/*.crt
 nginx/ssl/*.pem
 
-# Node (if frontend is added later)
+# Node / Frontend
 node_modules/
 npm-debug.log
 yarn-error.log
+.next/
+out/
+frontend/.next/
+frontend/out/
+frontend/node_modules/
 
 # OS
 Thumbs.db
