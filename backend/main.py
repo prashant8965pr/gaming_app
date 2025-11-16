@@ -20,8 +20,7 @@ from middleware.error_handler import (
 from middleware.logging_middleware import LoggingMiddleware
 
 # Import API routers
-from api.v1 import auth, users, kyc, bank, wallet, admin, rewards
-# from api.v1 import games  # Will be added in Phase 4
+from api.v1 import auth, users, kyc, bank, wallet, admin, rewards, games
 
 
 @asynccontextmanager
@@ -120,7 +119,7 @@ app.include_router(bank.router, prefix="/api/v1/bank", tags=["Bank Accounts"])
 app.include_router(wallet.router, prefix="/api/v1/wallet", tags=["Wallet"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
 app.include_router(rewards.router, prefix="/api/v1/rewards", tags=["Rewards"])
-# app.include_router(games.router, prefix="/api/v1/games", tags=["Games"])  # Phase 4
+app.include_router(games.router, prefix="/api/v1/games", tags=["Games"])
 
 
 # Mount static files for uploads (local storage)

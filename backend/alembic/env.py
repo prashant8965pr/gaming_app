@@ -46,6 +46,15 @@ from models.referral import (
     RewardTransaction
 )
 
+# Import Phase 4 models
+from models.game import (
+    Game,
+    GameSession,
+    GameParticipant,
+    GameMove,
+    GameResult
+)
+
 # this is the Alembic Config object
 config = context.config
 
