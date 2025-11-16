@@ -1,0 +1,31 @@
+[run]
+source = .
+omit =
+    */tests/*
+    */venv/*
+    */__pycache__/*
+    */alembic/*
+    */config/*
+    */.env
+    */setup.py
+
+[report]
+precision = 2
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    def __str__
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    @abstractmethod
+    @abc.abstractmethod
+    class .*\bProtocol\):
+    @overload
+
+[html]
+directory = htmlcov
+
+[xml]
+output = coverage.xml
