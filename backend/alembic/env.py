@@ -33,6 +33,19 @@ from models.wallet import (
     PaymentOrder
 )
 
+# Import Phase 3 models
+from models.referral import (
+    Referral,
+    Achievement,
+    UserAchievement,
+    DailyBonus,
+    PromoCode,
+    PromoCodeUsage,
+    Leaderboard,
+    UserLevel,
+    RewardTransaction
+)
+
 # this is the Alembic Config object
 config = context.config
 

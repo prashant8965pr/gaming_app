@@ -231,7 +231,7 @@ class RewardCalculator:
         """
         # Check minimum deposit
         if min_deposit and order_amount < min_deposit:
-            return False, 0.0, f"Minimum deposit of ¹{min_deposit} required"
+            return False, 0.0, f"Minimum deposit of Rs.{min_deposit} required"
 
         discount_amount = 0.0
 
@@ -252,7 +252,7 @@ class RewardCalculator:
         elif discount_type == "free":
             discount_amount = order_amount
 
-        return True, discount_amount, f"Discount of ¹{discount_amount:.2f} applied"
+        return True, discount_amount, f"Discount of Rs.{discount_amount:.2f} applied"
 
 
 class LeaderboardCalculator:
@@ -307,18 +307,18 @@ class LeaderboardCalculator:
         """
         if board_type == "daily":
             rewards = {
-                1: 50000,   # ¹500
-                2: 30000,   # ¹300
-                3: 20000,   # ¹200
-                4: 10000,   # ¹100
+                1: 50000,   # ï¿½500
+                2: 30000,   # ï¿½300
+                3: 20000,   # ï¿½200
+                4: 10000,   # ï¿½100
                 5: 10000,
             }
         elif board_type == "weekly":
             rewards = {
-                1: 500000,  # ¹5000
-                2: 300000,  # ¹3000
-                3: 200000,  # ¹2000
-                4: 100000,  # ¹1000
+                1: 500000,  # ï¿½5000
+                2: 300000,  # ï¿½3000
+                3: 200000,  # ï¿½2000
+                4: 100000,  # ï¿½1000
                 5: 100000,
                 6: 50000,
                 7: 50000,
@@ -328,10 +328,10 @@ class LeaderboardCalculator:
             }
         elif board_type == "monthly":
             rewards = {
-                1: 5000000,  # ¹50,000
-                2: 3000000,  # ¹30,000
-                3: 2000000,  # ¹20,000
-                4: 1000000,  # ¹10,000
+                1: 5000000,  # ï¿½50,000
+                2: 3000000,  # ï¿½30,000
+                3: 2000000,  # ï¿½20,000
+                4: 1000000,  # ï¿½10,000
                 5: 1000000,
                 6: 500000,
                 7: 500000,
@@ -341,9 +341,9 @@ class LeaderboardCalculator:
             }
         else:  # all_time
             rewards = {
-                1: 10000000,  # ¹1,00,000
-                2: 5000000,   # ¹50,000
-                3: 3000000,   # ¹30,000
+                1: 10000000,  # ï¿½1,00,000
+                2: 5000000,   # ï¿½50,000
+                3: 3000000,   # ï¿½30,000
             }
 
         return rewards.get(rank, 0)
