@@ -5,7 +5,9 @@ Main FastAPI application entry point
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
+import os
 
 from config.settings import settings
 from config.database import init_db, close_db
@@ -18,8 +20,8 @@ from middleware.error_handler import (
 from middleware.logging_middleware import LoggingMiddleware
 
 # Import API routers
-from api.v1 import auth, users
-# from api.v1 import wallet, games  # Will be added in future phases
+from api.v1 import auth, users, kyc, bank, wallet, admin
+# from api.v1 import games  # Will be added in Phase 4
 
 
 @asynccontextmanager
@@ -113,8 +115,19 @@ async def root():
 # API v1 Routers
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
-# app.include_router(wallet.router, prefix="/api/v1/wallet", tags=["Wallet"])  # Phase 2
+app.include_router(kyc.router, prefix="/api/v1/kyc", tags=["KYC"])
+app.include_router(bank.router, prefix="/api/v1/bank", tags=["Bank Accounts"])
+app.include_router(wallet.router, prefix="/api/v1/wallet", tags=["Wallet"])
+app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
 # app.include_router(games.router, prefix="/api/v1/games", tags=["Games"])  # Phase 4
+
+
+# Mount static files for uploads (local storage)
+if settings.FILE_STORAGE_TYPE == "local":
+    upload_dir = settings.UPLOAD_DIR
+    if not os.path.exists(upload_dir):
+        os.makedirs(upload_dir, exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory=upload_dir), name="uploads")
 
 
 if __name__ == "__main__":

@@ -65,6 +65,16 @@ class Settings(BaseSettings):
     AWS_S3_BUCKET: str = ""
     AWS_REGION: str = "us-east-1"
 
+    # Cloudinary
+    CLOUDINARY_CLOUD_NAME: str = ""
+    CLOUDINARY_API_KEY: str = ""
+    CLOUDINARY_API_SECRET: str = ""
+
+    # File Storage
+    FILE_STORAGE_TYPE: str = "local"  # local, s3, cloudinary
+    UPLOAD_DIR: str = "/app/uploads"
+    MAX_FILE_SIZE_MB: int = 5
+
     # Firebase
     FCM_SERVER_KEY: str = ""
 
@@ -77,6 +87,19 @@ class Settings(BaseSettings):
     # OTP
     OTP_EXPIRY_MINUTES: int = 5
     MAX_OTP_ATTEMPTS: int = 3
+
+    # KYC
+    KYC_AUTO_APPROVAL: bool = False  # Auto-approve KYC in development
+    KYC_REQUIRED_FOR_WITHDRAWAL: bool = True
+
+    # Wallet & Transactions
+    MIN_DEPOSIT_AMOUNT: float = 10.0  # Minimum deposit in rupees
+    MAX_DEPOSIT_AMOUNT: float = 100000.0  # Maximum deposit in rupees
+    MIN_WITHDRAWAL_AMOUNT: float = 100.0  # Minimum withdrawal in rupees
+    MAX_WITHDRAWAL_AMOUNT: float = 100000.0  # Maximum withdrawal in rupees
+    WITHDRAWAL_PROCESSING_FEE: float = 0.0  # Processing fee in rupees
+    TDS_PERCENTAGE: float = 30.0  # TDS on winnings above threshold
+    TDS_THRESHOLD: float = 10000.0  # TDS applicable on winnings above this amount
 
     @property
     def allowed_origins_list(self) -> List[str]:

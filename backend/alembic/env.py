@@ -19,6 +19,20 @@ from models.user import (
     UserStatistics
 )
 
+# Import Phase 2 models
+from models.kyc import (
+    KYCDocument,
+    BankAccount,
+    KYCVerificationHistory
+)
+
+from models.wallet import (
+    Wallet,
+    Transaction,
+    WithdrawalRequest,
+    PaymentOrder
+)
+
 # this is the Alembic Config object
 config = context.config
 
