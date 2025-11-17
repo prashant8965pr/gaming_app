@@ -11,6 +11,9 @@ import '../../bloc/user/user_event.dart';
 import '../../bloc/user/user_state.dart';
 import '../../widgets/loading_indicator.dart';
 import '../../widgets/error_widget.dart';
+import 'edit_profile_screen.dart';
+import '../settings/settings_screen.dart';
+import '../referral/referral_screen.dart';
 
 /// Profile screen displaying user information and statistics
 class ProfileScreen extends StatefulWidget {
@@ -69,7 +72,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         IconButton(
           icon: const Icon(Icons.settings_outlined),
           onPressed: () {
-            // TODO: Navigate to settings
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const SettingsScreen(),
+              ),
+            );
           },
         ),
       ],
@@ -180,7 +188,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   IconButton(
                     icon: const Icon(Icons.edit_outlined),
                     onPressed: () {
-                      // TODO: Navigate to edit profile
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const EditProfileScreen(),
+                        ),
+                      );
                     },
                   ),
                 ],
@@ -339,7 +352,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'icon': Icons.people_outline,
         'title': 'Referrals',
         'subtitle': 'Invite friends and earn',
-        'onTap': () {},
+        'onTap': () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const ReferralScreen(),
+            ),
+          );
+        },
       },
       {
         'icon': Icons.verified_user_outlined,
