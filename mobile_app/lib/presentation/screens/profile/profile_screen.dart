@@ -12,6 +12,8 @@ import '../../bloc/user/user_state.dart';
 import '../../widgets/loading_indicator.dart';
 import '../../widgets/error_widget.dart';
 import 'edit_profile_screen.dart';
+import 'kyc_verification_screen.dart';
+import 'game_history_screen.dart';
 import '../settings/settings_screen.dart';
 import '../referral/referral_screen.dart';
 
@@ -346,7 +348,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'icon': Icons.history,
         'title': 'Game History',
         'subtitle': 'View your game history',
-        'onTap': () {},
+        'onTap': () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const GameHistoryScreen(),
+            ),
+          );
+        },
       },
       {
         'icon': Icons.people_outline,
@@ -365,7 +374,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'icon': Icons.verified_user_outlined,
         'title': 'KYC Verification',
         'subtitle': 'Complete your KYC',
-        'onTap': () {},
+        'onTap': () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const KYCVerificationScreen(),
+            ),
+          );
+        },
       },
       {
         'icon': Icons.notifications_outlined,
