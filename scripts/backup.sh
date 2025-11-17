@@ -1,67 +1,68 @@
 #!/bin/bash
+
 # Gaming Platform - Database Backup Script
-# Usage: ./backup.sh
+# This script creates a backup of the PostgreSQL database
 
 set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+BACKUP_DIR="$PROJECT_ROOT/backups"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+BACKUP_FILE="$BACKUP_DIR/gaming_platform_$TIMESTAMP.sql"
 
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-NC='\033[0m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
-# Configuration
-COMPOSE_FILE="docker-compose.prod.yml"
-BACKUP_DIR="./backups"
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-BACKUP_FILE="backup_${TIMESTAMP}.sql.gz"
-RETENTION_DAYS=30
-
-echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Gaming Platform - Database Backup${NC}"
-echo -e "${GREEN}========================================${NC}\n"
+echo "=================================="
+echo "Gaming Platform - Database Backup"
+echo "=================================="
+echo ""
 
 # Create backup directory if it doesn't exist
-mkdir -p $BACKUP_DIR
+mkdir -p "$BACKUP_DIR"
 
-# Load environment variables
-if [ -f ".env" ]; then
-    export $(cat .env | grep -v '^#' | xargs)
-else
-    echo -e "${RED}Error: .env file not found${NC}"
+# Check if PostgreSQL container is running
+if ! docker ps | grep -q gaming_platform_postgres; then
+    echo -e "${RED}ERROR:${NC} PostgreSQL container is not running"
     exit 1
 fi
 
-echo -e "${YELLOW}Creating database backup...${NC}"
-echo -e "Database: $POSTGRES_DB"
-echo -e "Backup file: $BACKUP_DIR/$BACKUP_FILE\n"
+echo -e "${BLUE}[INFO]${NC} Starting backup..."
+echo -e "${BLUE}[INFO]${NC} Backup file: $BACKUP_FILE"
 
 # Create backup
-docker-compose -f $COMPOSE_FILE exec -T postgres \
-    pg_dump -U $POSTGRES_USER $POSTGRES_DB | \
-    gzip > $BACKUP_DIR/$BACKUP_FILE
-
-if [ $? -eq 0 ]; then
-    BACKUP_SIZE=$(du -h $BACKUP_DIR/$BACKUP_FILE | cut -f1)
-    echo -e "${GREEN}✓ Backup created successfully${NC}"
-    echo -e "  File: $BACKUP_FILE"
-    echo -e "  Size: $BACKUP_SIZE"
+if docker exec gaming_platform_postgres pg_dump -U postgres gaming_platform > "$BACKUP_FILE"; then
+    echo -e "${GREEN}[SUCCESS]${NC} Database backup created successfully"
+    
+    # Compress backup
+    echo -e "${BLUE}[INFO]${NC} Compressing backup..."
+    gzip "$BACKUP_FILE"
+    BACKUP_FILE="${BACKUP_FILE}.gz"
+    
+    # Get file size
+    SIZE=$(du -h "$BACKUP_FILE" | cut -f1)
+    echo -e "${GREEN}[SUCCESS]${NC} Backup compressed: $BACKUP_FILE ($SIZE)"
+    
+    # Clean old backups (keep last 7 days)
+    echo -e "${BLUE}[INFO]${NC} Cleaning old backups (keeping last 7 days)..."
+    find "$BACKUP_DIR" -name "gaming_platform_*.sql.gz" -mtime +7 -delete
+    
+    # List recent backups
+    echo ""
+    echo "Recent backups:"
+    ls -lh "$BACKUP_DIR"/gaming_platform_*.sql.gz 2>/dev/null | tail -5
+    
 else
-    echo -e "${RED}✗ Backup failed${NC}"
+    echo -e "${RED}[ERROR]${NC} Backup failed"
     exit 1
 fi
 
-# Clean up old backups
-echo -e "\n${YELLOW}Cleaning up old backups (keeping last $RETENTION_DAYS days)...${NC}"
-find $BACKUP_DIR -name "backup_*.sql.gz" -mtime +$RETENTION_DAYS -delete
-
-BACKUP_COUNT=$(ls -1 $BACKUP_DIR/backup_*.sql.gz 2>/dev/null | wc -l)
-echo -e "${GREEN}✓ Current backup count: $BACKUP_COUNT${NC}"
-
-# List recent backups
-echo -e "\n${YELLOW}Recent backups:${NC}"
-ls -lh $BACKUP_DIR/backup_*.sql.gz | tail -5
-
-echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}Backup completed successfully!${NC}"
-echo -e "${GREEN}========================================${NC}\n"
+echo ""
+echo "=================================="
+echo "Backup Complete"
+echo "=================================="

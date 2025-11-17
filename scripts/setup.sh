@@ -1,172 +1,188 @@
 #!/bin/bash
-# Gaming Platform - Initial Server Setup Script
-# Usage: sudo ./setup.sh
+
+# Gaming Platform - Initial Setup Script
+# This script sets up the environment for first-time deployment
 
 set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+echo "=================================="
+echo "Gaming Platform - Initial Setup"
+echo "=================================="
+echo ""
 
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-NC='\033[0m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
-echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Gaming Platform - Server Setup${NC}"
-echo -e "${GREEN}========================================${NC}\n"
+# Function to print colored messages
+print_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
 
 # Check if running as root
-if [ "$EUID" -ne 0 ]; then
-    echo -e "${RED}Please run as root (use sudo)${NC}"
+if [ "$EUID" -eq 0 ]; then
+    print_warning "Running as root. This is not recommended for production."
+fi
+
+# Check prerequisites
+print_info "Checking prerequisites..."
+
+command -v docker >/dev/null 2>&1 || {
+    print_error "Docker is not installed. Please install Docker first."
     exit 1
-fi
-
-# Update system
-echo -e "${YELLOW}Step 1: Updating system packages...${NC}"
-apt-get update
-apt-get upgrade -y
-echo -e "${GREEN}✓ System updated${NC}\n"
-
-# Install Docker
-echo -e "${YELLOW}Step 2: Installing Docker...${NC}"
-if ! command -v docker &> /dev/null; then
-    curl -fsSL https://get.docker.com -o get-docker.sh
-    sh get-docker.sh
-    rm get-docker.sh
-    systemctl enable docker
-    systemctl start docker
-    echo -e "${GREEN}✓ Docker installed${NC}\n"
-else
-    echo -e "${GREEN}✓ Docker already installed${NC}\n"
-fi
-
-# Install Docker Compose
-echo -e "${YELLOW}Step 3: Installing Docker Compose...${NC}"
-if ! command -v docker-compose &> /dev/null; then
-    DOCKER_COMPOSE_VERSION="2.23.0"
-    curl -L "https://github.com/docker/compose/releases/download/v${DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-    chmod +x /usr/local/bin/docker-compose
-    echo -e "${GREEN}✓ Docker Compose installed${NC}\n"
-else
-    echo -e "${GREEN}✓ Docker Compose already installed${NC}\n"
-fi
-
-# Install additional tools
-echo -e "${YELLOW}Step 4: Installing additional tools...${NC}"
-apt-get install -y \
-    curl \
-    wget \
-    git \
-    vim \
-    htop \
-    ufw \
-    certbot \
-    python3-certbot-nginx
-echo -e "${GREEN}✓ Additional tools installed${NC}\n"
-
-# Configure firewall
-echo -e "${YELLOW}Step 5: Configuring firewall...${NC}"
-ufw --force enable
-ufw allow 22/tcp    # SSH
-ufw allow 80/tcp    # HTTP
-ufw allow 443/tcp   # HTTPS
-echo -e "${GREEN}✓ Firewall configured${NC}\n"
-
-# Create application user
-echo -e "${YELLOW}Step 6: Creating application user...${NC}"
-if ! id -u gaming &> /dev/null; then
-    useradd -m -s /bin/bash gaming
-    usermod -aG docker gaming
-    echo -e "${GREEN}✓ User 'gaming' created${NC}\n"
-else
-    echo -e "${GREEN}✓ User 'gaming' already exists${NC}\n"
-fi
-
-# Create application directory
-echo -e "${YELLOW}Step 7: Setting up application directory...${NC}"
-APP_DIR="/home/gaming/gaming-platform"
-mkdir -p $APP_DIR/{backups,logs,uploads,nginx/ssl}
-chown -R gaming:gaming $APP_DIR
-echo -e "${GREEN}✓ Application directory created${NC}\n"
-
-# Setup log rotation
-echo -e "${YELLOW}Step 8: Configuring log rotation...${NC}"
-cat > /etc/logrotate.d/gaming-platform << EOF
-$APP_DIR/logs/*.log {
-    daily
-    rotate 14
-    compress
-    delaycompress
-    notifempty
-    create 0640 gaming gaming
-    sharedscripts
-    postrotate
-        docker-compose -f $APP_DIR/docker-compose.prod.yml restart backend
-    endscript
 }
-EOF
-echo -e "${GREEN}✓ Log rotation configured${NC}\n"
+print_success "Docker is installed"
 
-# Setup automatic backups
-echo -e "${YELLOW}Step 9: Setting up automatic backups...${NC}"
-cat > /etc/cron.d/gaming-backup << EOF
-# Daily database backup at 2 AM
-0 2 * * * gaming cd $APP_DIR && ./scripts/backup.sh >> $APP_DIR/logs/backup.log 2>&1
-EOF
-echo -e "${GREEN}✓ Automatic backups configured${NC}\n"
+command -v docker-compose >/dev/null 2>&1 || {
+    print_error "Docker Compose is not installed. Please install Docker Compose first."
+    exit 1
+}
+print_success "Docker Compose is installed"
 
-# Setup system monitoring
-echo -e "${YELLOW}Step 10: Configuring system monitoring...${NC}"
-cat > /etc/cron.d/gaming-monitoring << EOF
-# Health check every 5 minutes
-*/5 * * * * gaming cd $APP_DIR && ./scripts/health-check.sh >> $APP_DIR/logs/health.log 2>&1
-EOF
-echo -e "${GREEN}✓ System monitoring configured${NC}\n"
+# Navigate to project root
+cd "$PROJECT_ROOT"
 
-# Setup swap (if not exists)
-echo -e "${YELLOW}Step 11: Configuring swap space...${NC}"
-if [ ! -f /swapfile ]; then
-    fallocate -l 4G /swapfile
-    chmod 600 /swapfile
-    mkswap /swapfile
-    swapon /swapfile
-    echo '/swapfile none swap sw 0 0' >> /etc/fstab
-    echo -e "${GREEN}✓ Swap configured (4GB)${NC}\n"
+# Create necessary directories
+print_info "Creating necessary directories..."
+mkdir -p logs
+mkdir -p backups
+mkdir -p uploads
+mkdir -p data/postgres
+mkdir -p data/redis
+print_success "Directories created"
+
+# Environment setup
+print_info "Setting up environment files..."
+
+if [ ! -f backend/.env ]; then
+    if [ -f backend/.env.example ]; then
+        cp backend/.env.example backend/.env
+        print_success "Created backend/.env from .env.example"
+        print_warning "Please edit backend/.env with your actual configuration"
+    else
+        print_error "backend/.env.example not found"
+    fi
 else
-    echo -e "${GREEN}✓ Swap already configured${NC}\n"
+    print_info "backend/.env already exists"
 fi
 
-# Optimize system settings
-echo -e "${YELLOW}Step 12: Optimizing system settings...${NC}"
-cat >> /etc/sysctl.conf << EOF
+# Generate secrets if needed
+print_info "Checking for secrets..."
 
-# Gaming Platform Optimizations
-vm.swappiness=10
-vm.vfs_cache_pressure=50
-net.core.somaxconn=65535
-net.ipv4.tcp_max_syn_backlog=8192
-net.ipv4.ip_local_port_range=1024 65535
-EOF
-sysctl -p
-echo -e "${GREEN}✓ System settings optimized${NC}\n"
+if ! grep -q "JWT_SECRET=changeme" backend/.env 2>/dev/null; then
+    print_info "JWT_SECRET appears to be configured"
+else
+    print_warning "JWT_SECRET needs to be changed in backend/.env"
+    JWT_SECRET=$(openssl rand -hex 32 2>/dev/null || echo "PLEASE_CHANGE_THIS_$(date +%s)")
+    print_info "Generated JWT_SECRET: $JWT_SECRET"
+    echo "Please update JWT_SECRET in backend/.env with the above value"
+fi
 
-# Display summary
-echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}✓ Server setup completed successfully!${NC}"
-echo -e "${GREEN}========================================${NC}\n"
+# Database setup
+print_info "Setting up database..."
 
-echo -e "${YELLOW}Next steps:${NC}"
-echo -e "1. Switch to gaming user: ${GREEN}su - gaming${NC}"
-echo -e "2. Clone repository: ${GREEN}git clone <repo-url> ~/gaming-platform${NC}"
-echo -e "3. Configure environment: ${GREEN}cp .env.example .env${NC}"
-echo -e "4. Edit .env file: ${GREEN}vim .env${NC}"
-echo -e "5. Deploy application: ${GREEN}./scripts/deploy.sh production${NC}"
+# Check if database is already running
+if docker ps | grep -q gaming_platform_postgres; then
+    print_info "Database container is already running"
+else
+    print_info "Starting database container..."
+    docker-compose up -d postgres
+    print_success "Database container started"
+
+    print_info "Waiting for database to be ready..."
+    sleep 10
+fi
+
+# Run migrations
+print_info "Running database migrations..."
+if [ -d "backend/alembic" ]; then
+    docker-compose exec -T backend alembic upgrade head 2>/dev/null || {
+        print_warning "Could not run migrations automatically. Please run manually:"
+        echo "  docker-compose exec backend alembic upgrade head"
+    }
+else
+    print_warning "Alembic directory not found. Migrations may need to be set up."
+fi
+
+# Redis setup
+print_info "Starting Redis..."
+docker-compose up -d redis
+print_success "Redis container started"
+
+# Set up file permissions
+print_info "Setting up file permissions..."
+chmod +x scripts/*.sh
+print_success "Scripts made executable"
+
+# Pull required Docker images
+print_info "Pulling Docker images..."
+docker-compose pull
+print_success "Docker images pulled"
+
+# Build backend image
+print_info "Building backend image..."
+docker-compose build backend
+print_success "Backend image built"
+
+# Network setup
+print_info "Checking Docker networks..."
+if ! docker network ls | grep -q gaming_platform_network; then
+    docker network create gaming_platform_network 2>/dev/null || true
+    print_success "Docker network created"
+else
+    print_info "Docker network already exists"
+fi
+
+# Health check
+print_info "Performing initial health check..."
+sleep 5
+
+if docker ps | grep -q gaming_platform_postgres; then
+    print_success "PostgreSQL is running"
+else
+    print_warning "PostgreSQL is not running"
+fi
+
+if docker ps | grep -q gaming_platform_redis; then
+    print_success "Redis is running"
+else
+    print_warning "Redis is not running"
+fi
+
+# Summary
 echo ""
-
-echo -e "${YELLOW}Installed versions:${NC}"
-docker --version
-docker-compose --version
+echo "=================================="
+echo "Setup Complete!"
+echo "=================================="
 echo ""
-
-echo -e "${YELLOW}Application directory:${NC} $APP_DIR"
-echo -e "${YELLOW}Application user:${NC} gaming"
+print_info "Next steps:"
+echo "  1. Edit backend/.env with your configuration"
+echo "  2. Run: docker-compose up -d"
+echo "  3. Check health: ./scripts/health-check.sh"
+echo "  4. View logs: docker-compose logs -f"
 echo ""
+print_info "Useful commands:"
+echo "  - Start all services: docker-compose up -d"
+echo "  - Stop all services: docker-compose down"
+echo "  - View logs: docker-compose logs -f"
+echo "  - Run migrations: docker-compose exec backend alembic upgrade head"
+echo ""
+print_success "Setup completed successfully!"

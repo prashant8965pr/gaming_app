@@ -1,134 +1,218 @@
 #!/bin/bash
-# Gaming Platform - Deployment Script
-# Usage: ./deploy.sh [staging|production]
+
+# Gaming Platform Deployment Script
+# Usage: ./scripts/deploy.sh [environment]
+# Environment: development | staging | production
 
 set -e
 
-# Colors for output
-RED='\033[0;31m'
+ENVIRONMENT=${1:-development}
+PROJECT_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+
+echo "================================================"
+echo "Gaming Platform Deployment Script"
+echo "================================================"
+echo "Environment: $ENVIRONMENT"
+echo "Project Root: $PROJECT_ROOT"
+echo ""
+
+# Colors
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-# Configuration
-ENVIRONMENT=${1:-staging}
-COMPOSE_FILE="docker-compose.prod.yml"
-BACKUP_DIR="./backups"
+# Functions
+log_info() {
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
 
-echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}Gaming Platform Deployment${NC}"
-echo -e "${GREEN}Environment: $ENVIRONMENT${NC}"
-echo -e "${GREEN}========================================${NC}\n"
+log_warn() {
+    echo -e "${YELLOW}[WARN]${NC} $1"
+}
 
-# Validate environment
-if [ "$ENVIRONMENT" != "staging" ] && [ "$ENVIRONMENT" != "production" ]; then
-    echo -e "${RED}Error: Invalid environment. Use 'staging' or 'production'${NC}"
-    exit 1
-fi
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
 
-# Check if .env file exists
-if [ ! -f ".env" ]; then
-    echo -e "${RED}Error: .env file not found${NC}"
-    echo -e "${YELLOW}Please copy .env.example to .env and configure it${NC}"
-    exit 1
-fi
-
-# Confirmation for production
-if [ "$ENVIRONMENT" == "production" ]; then
-    echo -e "${YELLOW}⚠️  WARNING: You are about to deploy to PRODUCTION${NC}"
-    read -p "Are you sure you want to continue? (yes/no): " confirm
-    if [ "$confirm" != "yes" ]; then
-        echo -e "${RED}Deployment cancelled${NC}"
-        exit 0
-    fi
-fi
-
-# Step 1: Create backup (production only)
-if [ "$ENVIRONMENT" == "production" ]; then
-    echo -e "\n${YELLOW}Step 1: Creating backup...${NC}"
-    ./scripts/backup.sh
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}Backup failed! Aborting deployment.${NC}"
+# Check prerequisites
+check_prerequisites() {
+    log_info "Checking prerequisites..."
+    
+    # Check Docker
+    if ! command -v docker &> /dev/null; then
+        log_error "Docker is not installed"
         exit 1
     fi
-    echo -e "${GREEN}✓ Backup created successfully${NC}"
-else
-    echo -e "\n${YELLOW}Step 1: Skipping backup (staging environment)${NC}"
-fi
+    
+    # Check Docker Compose
+    if ! command -v docker-compose &> /dev/null; then
+        log_error "Docker Compose is not installed"
+        exit 1
+    fi
+    
+    log_info "All prerequisites met ✓"
+}
 
-# Step 2: Pull latest images
-echo -e "\n${YELLOW}Step 2: Pulling latest Docker images...${NC}"
-docker-compose -f $COMPOSE_FILE pull
-echo -e "${GREEN}✓ Images pulled successfully${NC}"
+# Load environment variables
+load_env() {
+    log_info "Loading environment variables..."
+    
+    ENV_FILE="$PROJECT_ROOT/.env.$ENVIRONMENT"
+    
+    if [ ! -f "$ENV_FILE" ]; then
+        log_warn "Environment file not found: $ENV_FILE"
+        log_warn "Copying from example..."
+        cp "$PROJECT_ROOT/.env.example" "$ENV_FILE"
+        log_error "Please configure $ENV_FILE before deploying"
+        exit 1
+    fi
+    
+    export $(cat "$ENV_FILE" | grep -v '^#' | xargs)
+    log_info "Environment loaded from $ENV_FILE ✓"
+}
 
-# Step 3: Run database migrations
-echo -e "\n${YELLOW}Step 3: Running database migrations...${NC}"
-docker-compose -f $COMPOSE_FILE run --rm backend alembic upgrade head
-if [ $? -ne 0 ]; then
-    echo -e "${RED}Migration failed! Aborting deployment.${NC}"
-    exit 1
-fi
-echo -e "${GREEN}✓ Migrations completed successfully${NC}"
-
-# Step 4: Deploy services
-echo -e "\n${YELLOW}Step 4: Deploying services...${NC}"
-
-if [ "$ENVIRONMENT" == "production" ]; then
-    # Rolling update for production
-    echo -e "${YELLOW}Performing rolling update...${NC}"
-
-    # Scale up backend
-    docker-compose -f $COMPOSE_FILE up -d --no-deps --scale backend=4 backend
-    sleep 30
-
-    # Scale down to normal
-    docker-compose -f $COMPOSE_FILE up -d --no-deps --scale backend=2 backend
-    sleep 10
-
-    # Update other services
-    docker-compose -f $COMPOSE_FILE up -d
-else
-    # Simple update for staging
-    docker-compose -f $COMPOSE_FILE up -d --build
-fi
-
-echo -e "${GREEN}✓ Services deployed successfully${NC}"
-
-# Step 5: Health check
-echo -e "\n${YELLOW}Step 5: Running health checks...${NC}"
-./scripts/health-check.sh
-if [ $? -ne 0 ]; then
-    echo -e "${RED}Health check failed!${NC}"
-
+# Stop existing containers
+stop_containers() {
+    log_info "Stopping existing containers..."
+    
     if [ "$ENVIRONMENT" == "production" ]; then
-        echo -e "${YELLOW}Initiating rollback...${NC}"
-        ./scripts/rollback.sh
-        exit 1
+        docker-compose -f "$PROJECT_ROOT/docker-compose.prod.yml" down || true
     else
-        echo -e "${YELLOW}Check the logs for errors${NC}"
+        docker-compose -f "$PROJECT_ROOT/docker-compose.yml" down || true
+    fi
+    
+    log_info "Containers stopped ✓"
+}
+
+# Build images
+build_images() {
+    log_info "Building Docker images..."
+    
+    if [ "$ENVIRONMENT" == "production" ]; then
+        docker-compose -f "$PROJECT_ROOT/docker-compose.prod.yml" build --no-cache
+    else
+        docker-compose -f "$PROJECT_ROOT/docker-compose.yml" build
+    fi
+    
+    log_info "Images built ✓"
+}
+
+# Start containers
+start_containers() {
+    log_info "Starting containers..."
+    
+    if [ "$ENVIRONMENT" == "production" ]; then
+        docker-compose -f "$PROJECT_ROOT/docker-compose.prod.yml" up -d
+    else
+        docker-compose -f "$PROJECT_ROOT/docker-compose.yml" up -d
+    fi
+    
+    log_info "Containers started ✓"
+}
+
+# Wait for services
+wait_for_services() {
+    log_info "Waiting for services to be ready..."
+    
+    sleep 5
+    
+    # Wait for database
+    log_info "Waiting for database..."
+    for i in {1..30}; do
+        if docker exec gaming_platform_postgres_prod pg_isready -U postgres > /dev/null 2>&1 || \
+           docker exec gaming_platform_postgres pg_isready -U postgres > /dev/null 2>&1; then
+            log_info "Database is ready ✓"
+            break
+        fi
+        sleep 2
+    done
+    
+    # Wait for backend
+    log_info "Waiting for backend..."
+    for i in {1..30}; do
+        if curl -f http://localhost:8000/health > /dev/null 2>&1; then
+            log_info "Backend is ready ✓"
+            break
+        fi
+        sleep 2
+    done
+}
+
+# Run migrations
+run_migrations() {
+    log_info "Running database migrations..."
+    
+    CONTAINER="gaming_platform_backend"
+    if [ "$ENVIRONMENT" == "production" ]; then
+        CONTAINER="gaming_platform_backend_prod"
+    fi
+    
+    docker exec $CONTAINER alembic upgrade head
+    
+    log_info "Migrations completed ✓"
+}
+
+# Health check
+health_check() {
+    log_info "Running health checks..."
+    
+    # Check backend
+    BACKEND_HEALTH=$(curl -s http://localhost:8000/health | grep -o '"status":"healthy"' || echo "")
+    if [ -n "$BACKEND_HEALTH" ]; then
+        log_info "Backend health check passed ✓"
+    else
+        log_error "Backend health check failed ✗"
         exit 1
     fi
-fi
-echo -e "${GREEN}✓ Health checks passed${NC}"
+    
+    # Check database
+    if docker exec gaming_platform_postgres pg_isready -U postgres > /dev/null 2>&1; then
+        log_info "Database health check passed ✓"
+    else
+        log_error "Database health check failed ✗"
+        exit 1
+    fi
+}
 
-# Step 6: Clean up
-echo -e "\n${YELLOW}Step 6: Cleaning up...${NC}"
-docker image prune -af
-echo -e "${GREEN}✓ Cleanup completed${NC}"
+# Show status
+show_status() {
+    echo ""
+    log_info "Deployment Status"
+    echo "================================================"
+    
+    if [ "$ENVIRONMENT" == "production" ]; then
+        docker-compose -f "$PROJECT_ROOT/docker-compose.prod.yml" ps
+    else
+        docker-compose -f "$PROJECT_ROOT/docker-compose.yml" ps
+    fi
+    
+    echo ""
+    log_info "Services:"
+    echo "  Backend API: http://localhost:8000"
+    echo "  API Docs: http://localhost:8000/docs"
+    echo "  Database: localhost:5432"
+    echo "  Redis: localhost:6379"
+    echo ""
+}
 
-# Step 7: Display status
-echo -e "\n${YELLOW}Step 7: Service Status${NC}"
-docker-compose -f $COMPOSE_FILE ps
+# Main deployment flow
+main() {
+    check_prerequisites
+    load_env
+    stop_containers
+    build_images
+    start_containers
+    wait_for_services
+    run_migrations
+    health_check
+    show_status
+    
+    echo ""
+    log_info "================================================"
+    log_info "Deployment completed successfully! 🎉"
+    log_info "================================================"
+}
 
-echo -e "\n${GREEN}========================================${NC}"
-echo -e "${GREEN}🎉 Deployment completed successfully!${NC}"
-echo -e "${GREEN}Environment: $ENVIRONMENT${NC}"
-echo -e "${GREEN}========================================${NC}\n"
-
-# Display useful commands
-echo -e "${YELLOW}Useful commands:${NC}"
-echo -e "  View logs:    docker-compose -f $COMPOSE_FILE logs -f"
-echo -e "  Stop:         docker-compose -f $COMPOSE_FILE down"
-echo -e "  Restart:      docker-compose -f $COMPOSE_FILE restart"
-echo -e "  Status:       docker-compose -f $COMPOSE_FILE ps"
-echo ""
+# Run main function
+main
