@@ -1,793 +1,650 @@
 # Gaming Platform - Testing Guide
 
-Comprehensive guide for testing the gaming platform.
-
-**Last Updated:** November 16, 2025
-
----
+Complete guide for testing the Gaming Platform backend API and Flutter mobile application.
 
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Test Infrastructure](#test-infrastructure)
+2. [Testing Stack](#testing-stack)
 3. [Backend Testing](#backend-testing)
-4. [Frontend E2E Testing](#frontend-e2e-testing)
-5. [Load Testing](#load-testing)
-6. [CI/CD Testing](#cicd-testing)
-7. [Test Coverage](#test-coverage)
-8. [Best Practices](#best-practices)
-9. [Troubleshooting](#troubleshooting)
-
----
+4. [Mobile App Testing](#mobile-app-testing)
+5. [API Testing](#api-testing)
+6. [End-to-End Testing](#end-to-end-testing)
+7. [Performance Testing](#performance-testing)
+8. [Security Testing](#security-testing)
+9. [CI/CD Integration](#cicd-integration)
+10. [Best Practices](#best-practices)
 
 ## Overview
 
-The gaming platform uses a comprehensive testing strategy:
+The Gaming Platform uses a comprehensive testing strategy covering:
 
-- **Unit Tests** - Backend business logic (pytest)
-- **Integration Tests** - API endpoints and database (pytest)
-- **E2E Tests** - Complete user journeys (Playwright)
-- **Load Tests** - Performance and scalability (Locust)
-- **Security Tests** - Vulnerability scanning (Bandit, Safety)
+- **Unit Tests**: Individual component testing
+- **Integration Tests**: API endpoint testing
+- **E2E Tests**: Complete user journey testing
+- **Performance Tests**: Load and stress testing
+- **Security Tests**: Vulnerability and penetration testing
 
-### Test Philosophy
+## Testing Stack
 
-- **Test Coverage:** Aim for >80% code coverage
-- **Test Pyramid:** More unit tests, fewer E2E tests
-- **Fast Feedback:** Tests should run quickly
-- **Reliability:** Tests should be deterministic
-- **Isolation:** Tests should not depend on each other
+### Backend
+- **pytest**: Test framework
+- **httpx**: Async HTTP client for API testing
+- **pytest-asyncio**: Async test support
+- **pytest-cov**: Code coverage
+- **faker**: Test data generation
+- **factory-boy**: Model factories
 
----
+### Mobile
+- **flutter_test**: Flutter testing framework
+- **mockito**: Mocking framework
+- **integration_test**: Flutter integration tests
+- **golden_toolkit**: UI snapshot testing
 
-## Test Infrastructure
-
-### Directory Structure
-
-```
-gaming_app/
-├── backend/
-│   └── tests/
-│       ├── conftest.py          # Test fixtures
-│       ├── test_auth.py         # Auth tests
-│       ├── test_users.py        # User tests
-│       ├── test_wallet.py       # Wallet tests
-│       ├── test_games.py        # Game tests
-│       ├── test_kyc.py          # KYC tests
-│       └── test_rewards.py      # Rewards tests
-│
-├── frontend/
-│   ├── playwright.config.ts    # Playwright config
-│   └── tests/
-│       └── e2e/
-│           ├── auth.spec.ts     # Auth E2E tests
-│           ├── dashboard.spec.ts
-│           ├── wallet.spec.ts
-│           ├── games.spec.ts
-│           └── helpers/
-│               └── auth.ts      # Test helpers
-│
-├── frontend-admin/
-│   └── tests/
-│       └── e2e/
-│           └── admin.spec.ts    # Admin E2E tests
-│
-└── load-tests/
-    └── locustfile.py           # Load testing scenarios
-```
-
-### Test Dependencies
-
-**Backend:**
-- pytest
-- pytest-asyncio
-- pytest-cov
-- httpx (for async client)
-
-**Frontend:**
-- @playwright/test
-- @testing-library/react (optional)
-
-**Load Testing:**
-- locust
-
----
+### Tools
+- **Postman/Thunder Client**: API manual testing
+- **Locust**: Load testing
+- **OWASP ZAP**: Security testing
+- **SonarQube**: Code quality analysis
 
 ## Backend Testing
 
-### Running Backend Tests
-
-#### All Tests
+### Setup Test Environment
 
 ```bash
 cd backend
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run all tests
 pytest
+
+# Run with coverage
+pytest --cov=. --cov-report=html
+
+# Run specific test types
+pytest -m unit          # Unit tests only
+pytest -m integration   # Integration tests only
+pytest -m e2e           # E2E tests only
 ```
 
-#### With Coverage
+### Test Structure
 
-```bash
-pytest --cov --cov-report=html --cov-report=term-missing
+```
+backend/tests/
+├── conftest.py              # Shared fixtures
+├── unit/                    # Unit tests
+│   ├── test_models_user.py
+│   ├── test_models_game.py
+│   └── ...
+├── integration/             # Integration tests
+│   ├── test_api_auth.py
+│   ├── test_api_games.py
+│   ├── test_api_wallet.py
+│   ├── test_api_rewards.py
+│   └── test_api_kyc.py
+├── e2e/                     # End-to-end tests
+│   └── test_user_journey.py
+└── fixtures/                # Test data fixtures
+    └── __init__.py
 ```
 
-#### Specific Test File
+### Writing Tests
 
-```bash
-pytest tests/test_auth.py
-```
-
-#### Specific Test Function
-
-```bash
-pytest tests/test_auth.py::test_send_otp
-```
-
-#### With Verbose Output
-
-```bash
-pytest -v
-```
-
-#### Stop on First Failure
-
-```bash
-pytest -x
-```
-
-### Test Fixtures
-
-Available fixtures in `conftest.py`:
+#### Unit Test Example
 
 ```python
-# Database
-db_session              # Async database session
-test_db_engine          # Test database engine
+import pytest
+from models.user import User
+from services.auth_service import hash_password
 
-# HTTP Client
-client                  # Test HTTP client
-
-# Users
-test_user               # Regular user
-test_user_2             # Second user
-admin_user              # Admin user
-
-# Authentication
-auth_token              # User auth token
-admin_token             # Admin auth token
-auth_headers            # Auth headers
-admin_headers           # Admin auth headers
-
-# Wallet
-test_wallets            # User wallets
-
-# Games
-test_game               # Test game
-test_game_session       # Test game session
-
-# KYC
-test_kyc_document       # Test KYC document
-
-# Rewards
-test_daily_bonus        # Test daily bonus
-test_achievement        # Test achievement
-
-# Mocks
-mock_payment_gateway    # Mock payment service
-mock_sms_service        # Mock SMS service
-mock_email_service      # Mock email service
+@pytest.mark.unit
+def test_user_creation():
+    """Test user model creation"""
+    user = User(
+        username="testuser",
+        email="test@example.com",
+        password_hash=hash_password("password123")
+    )
+    assert user.username == "testuser"
+    assert user.email == "test@example.com"
 ```
 
-### Example Test
+#### Integration Test Example
 
 ```python
 import pytest
 from httpx import AsyncClient
 
-
-@pytest.mark.asyncio
-async def test_get_user_profile(client: AsyncClient, auth_headers: dict):
-    """Test getting user profile"""
-    response = await client.get(
-        "/api/v1/users/profile",
-        headers=auth_headers
-    )
-
-    assert response.status_code == 200
-    data = response.json()
-    assert data["success"] is True
-    assert "username" in data["data"]
-```
-
-### Writing Tests
-
-#### 1. Unit Tests
-
-Test individual functions/methods:
-
-```python
-def test_calculate_prize_distribution():
-    """Test prize distribution calculation"""
-    from utils.game_utils import calculate_prize_distribution
-
-    result = calculate_prize_distribution(
-        total_pool=1000,
-        distribution={"1st": 70, "2nd": 20, "3rd": 10}
-    )
-
-    assert result["1st"] == 700
-    assert result["2nd"] == 200
-    assert result["3rd"] == 100
-```
-
-#### 2. API Tests
-
-Test API endpoints:
-
-```python
-@pytest.mark.asyncio
-async def test_create_game_session(
-    client: AsyncClient,
-    auth_headers: dict,
-    test_game
-):
-    """Test creating a game session"""
+@pytest.mark.integration
+async def test_register_user(client: AsyncClient):
+    """Test user registration endpoint"""
     response = await client.post(
-        "/api/v1/games/sessions",
-        headers=auth_headers,
+        "/api/v1/auth/register",
         json={
-            "game_id": str(test_game.id),
-            "entry_fee": 100,
-            "max_players": 4,
-            "is_private": False
+            "username": "newuser",
+            "email": "new@example.com",
+            "password": "SecurePass123!"
         }
     )
-
     assert response.status_code == 201
-    data = response.json()
-    assert data["success"] is True
-    assert "session_code" in data["data"]
+    assert "user" in response.json()["data"]
 ```
 
-#### 3. Database Tests
-
-Test database operations:
+#### E2E Test Example
 
 ```python
-@pytest.mark.asyncio
-async def test_user_creation(db_session):
-    """Test creating a user in database"""
-    from models.user import User
-
-    user = User(
-        username="newuser",
-        phone="+919876543210",
-        is_phone_verified=True
-    )
-
-    db_session.add(user)
-    await db_session.commit()
-    await db_session.refresh(user)
-
-    assert user.id is not None
-    assert user.username == "newuser"
+@pytest.mark.e2e
+async def test_complete_user_flow(client: AsyncClient):
+    """Test complete user registration to gameplay"""
+    # Register
+    register_response = await client.post("/api/v1/auth/register", ...)
+    
+    # Login
+    login_response = await client.post("/api/v1/auth/login", ...)
+    
+    # Add money
+    add_money_response = await client.post("/api/v1/wallet/add-money", ...)
+    
+    # Join game
+    join_response = await client.post("/api/v1/games/sessions/join", ...)
 ```
 
-### Test Coverage Report
+### Test Coverage Goals
 
-View coverage report:
+- **Overall Coverage**: ≥ 80%
+- **Critical Paths**: ≥ 95%
+- **Authentication**: 100%
+- **Payment Processing**: 100%
+- **Game Logic**: ≥ 90%
+
+### Running Tests with Options
 
 ```bash
+# Verbose output
+pytest -v
+
+# Show print statements
+pytest -s
+
+# Stop on first failure
+pytest -x
+
+# Run specific test file
+pytest tests/integration/test_api_auth.py
+
+# Run specific test function
+pytest tests/integration/test_api_auth.py::test_register_user
+
+# Run tests matching pattern
+pytest -k "auth"
+
+# Parallel execution
+pytest -n auto
+
 # Generate HTML report
-pytest --cov --cov-report=html
-
-# Open in browser
-open htmlcov/index.html
+pytest --html=report.html
 ```
 
----
+## Mobile App Testing
 
-## Frontend E2E Testing
-
-### Setup Playwright
+### Setup Test Environment
 
 ```bash
-cd frontend
+cd mobile_app
 
-# Install Playwright
-npm install -D @playwright/test
+# Get dependencies
+flutter pub get
 
-# Install browsers
-npx playwright install
+# Run all tests
+flutter test
 
-# Install system dependencies (Linux)
-npx playwright install-deps
+# Run with coverage
+flutter test --coverage
+
+# View coverage
+genhtml coverage/lcov.info -o coverage/html
+open coverage/html/index.html
 ```
 
-### Running E2E Tests
+### Test Structure
 
-#### All Tests
-
-```bash
-npx playwright test
+```
+mobile_app/test/
+├── unit/
+│   ├── data/
+│   │   ├── repositories_test.dart
+│   │   └── datasources_test.dart
+│   ├── domain/
+│   │   └── usecases_test.dart
+│   └── presentation/
+│       └── blocs_test.dart
+├── widget/
+│   ├── auth_test.dart
+│   ├── wallet_test.dart
+│   └── games_test.dart
+└── integration/
+    └── app_test.dart
 ```
 
-#### Headed Mode (See Browser)
+### Writing Flutter Tests
 
-```bash
-npx playwright test --headed
-```
+#### Unit Test Example
 
-#### Debug Mode
+```dart
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mockito/mockito.dart';
 
-```bash
-npx playwright test --debug
-```
-
-#### Specific Test File
-
-```bash
-npx playwright test auth.spec.ts
-```
-
-#### Specific Browser
-
-```bash
-npx playwright test --project=chromium
-npx playwright test --project=firefox
-npx playwright test --project=webkit
-```
-
-#### UI Mode (Interactive)
-
-```bash
-npx playwright test --ui
-```
-
-### Test Report
-
-View test results:
-
-```bash
-npx playwright show-report
-```
-
-### Writing E2E Tests
-
-#### Basic Structure
-
-```typescript
-import { test, expect } from '@playwright/test';
-
-test.describe('Feature Name', () => {
-  test.beforeEach(async ({ page }) => {
-    // Setup before each test
-    await page.goto('/');
+void main() {
+  group('AuthRepository', () {
+    test('login returns success on valid credentials', () async {
+      final repository = AuthRepository();
+      
+      final result = await repository.login(
+        username: 'testuser',
+        password: 'password123',
+      );
+      
+      expect(result.isRight(), true);
+    });
   });
+}
+```
 
-  test('should do something', async ({ page }) => {
-    // Test implementation
-    await page.getByLabel('Username').fill('testuser');
-    await page.getByRole('button', { name: /submit/i }).click();
+#### Widget Test Example
 
-    await expect(page).toHaveURL('/dashboard');
+```dart
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  testWidgets('Login screen shows email and password fields', 
+    (WidgetTester tester) async {
+    
+    await tester.pumpWidget(MyApp());
+    
+    expect(find.byType(TextField), findsNWidgets(2));
+    expect(find.text('Login'), findsOneWidget);
   });
-});
+}
 ```
 
-#### Using Test Helpers
+#### Integration Test Example
 
-```typescript
-import { loginUser, TEST_USERS } from './helpers/auth';
+```dart
+import 'package:integration_test/integration_test.dart';
+import 'package:flutter_test/flutter_test.dart';
 
-test('should access dashboard after login', async ({ page }) => {
-  await loginUser(page, TEST_USERS.regularUser);
+void main() {
+  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  await expect(page).toHaveURL(/\/dashboard/);
-  await expect(page.getByText(/welcome/i)).toBeVisible();
-});
+  testWidgets('Complete user flow', (WidgetTester tester) async {
+    // Launch app
+    await tester.pumpWidget(MyApp());
+    
+    // Login
+    await tester.enterText(find.byKey(Key('username')), 'testuser');
+    await tester.enterText(find.byKey(Key('password')), 'password123');
+    await tester.tap(find.text('Login'));
+    await tester.pumpAndSettle();
+    
+    // Verify navigation to home
+    expect(find.text('Home'), findsOneWidget);
+  });
+}
 ```
 
-#### Testing Forms
-
-```typescript
-test('should submit form', async ({ page }) => {
-  await page.goto('/deposit');
-
-  // Fill form
-  await page.getByLabel(/amount/i).fill('1000');
-  await page.getByLabel(/payment method/i).selectOption('razorpay');
-
-  // Submit
-  await page.getByRole('button', { name: /submit/i }).click();
-
-  // Verify
-  await expect(page.getByText(/success/i)).toBeVisible();
-});
-```
-
-#### Testing API Responses
-
-```typescript
-test('should load data from API', async ({ page }) => {
-  // Wait for API response
-  const responsePromise = page.waitForResponse(
-    (response) => response.url().includes('/api/v1/games/catalog')
-  );
-
-  await page.goto('/games');
-
-  const response = await responsePromise;
-  expect(response.status()).toBe(200);
-
-  // Verify data is displayed
-  await expect(page.getByTestId('game-card')).toBeVisible();
-});
-```
-
-### Visual Testing
-
-Take screenshots for visual regression:
-
-```typescript
-test('should match screenshot', async ({ page }) => {
-  await page.goto('/dashboard');
-
-  await expect(page).toHaveScreenshot('dashboard.png');
-});
-```
-
----
-
-## Load Testing
-
-### Setup Locust
+### Running Mobile Tests
 
 ```bash
-pip install locust
+# Unit and widget tests
+flutter test
+
+# Integration tests
+flutter test integration_test/
+
+# Specific test file
+flutter test test/unit/auth_test.dart
+
+# With coverage
+flutter test --coverage
+
+# On device
+flutter drive --driver=test_driver/integration_test.dart \
+  --target=integration_test/app_test.dart
 ```
 
-### Running Load Tests
+## API Testing
 
-#### Web UI Mode
+### Postman Collection
+
+Import the collection: `backend/tests/Gaming_Platform_API.postman_collection.json`
+
+#### Quick Start
+
+1. **Import Collection**
+   - Open Postman
+   - Import → Upload Files
+   - Select `Gaming_Platform_API.postman_collection.json`
+
+2. **Set Environment Variables**
+   ```
+   base_url: http://localhost:8000
+   access_token: (auto-set after login)
+   user_id: (auto-set after login)
+   ```
+
+3. **Run Collection**
+   - Collection Runner → Select collection
+   - Run automated tests
+
+#### Manual Testing Flow
+
+1. **Authentication** → Register → Login (token auto-saved)
+2. **Games** → Browse games → Create session
+3. **Wallet** → Add money → Verify payment
+4. **Rewards** → Check daily bonus → View achievements
+5. **KYC** → Submit documents → Check status
+
+### Thunder Client (VS Code)
+
+1. Install Thunder Client extension
+2. Import collection JSON
+3. Set environment variables
+4. Run requests
+
+### cURL Examples
 
 ```bash
-cd load-tests
-locust -f locustfile.py --host=http://localhost:8000
+# Register user
+curl -X POST http://localhost:8000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "testuser",
+    "email": "test@example.com",
+    "password": "SecurePass123!"
+  }'
+
+# Login
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "testuser",
+    "password": "SecurePass123!"
+  }'
+
+# Get wallet balance (with auth)
+curl -X GET http://localhost:8000/api/v1/wallet/balance \
+  -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
-Then open http://localhost:8089
+## End-to-End Testing
 
-#### Headless Mode
-
-```bash
-locust -f locustfile.py \
-  --host=http://localhost:8000 \
-  --users 100 \
-  --spawn-rate 10 \
-  --run-time 5m \
-  --headless
-```
+E2E tests verify complete user workflows:
 
 ### Test Scenarios
 
-#### Light Load
+1. **New User Journey**
+   - Registration → Verification → Wallet setup → First game
+
+2. **Payment Flow**
+   - Add money → Verify payment → Transaction history
+
+3. **KYC Process**
+   - Document submission → Verification → Withdrawal
+
+4. **Referral Program**
+   - Get code → Refer friend → Receive bonus
+
+5. **Multiplayer Game**
+   - Create session → Players join → Game starts → Winner determined
+
+### Running E2E Tests
 
 ```bash
-locust -f locustfile.py \
-  --host=http://localhost:8000 \
-  --users 10 \
-  --spawn-rate 2 \
-  --run-time 2m
+# Backend E2E
+cd backend
+pytest -m e2e -v
+
+# Mobile E2E
+cd mobile_app
+flutter drive --driver=test_driver/integration_test.dart \
+  --target=integration_test/complete_flow_test.dart
+
+# Full system E2E (requires both running)
+./scripts/run-e2e-tests.sh
 ```
 
-#### Stress Test
+## Performance Testing
 
+### Load Testing with Locust
+
+```python
+# locustfile.py
+from locust import HttpUser, task, between
+
+class GameUser(HttpUser):
+    wait_time = between(1, 3)
+    
+    def on_start(self):
+        # Login
+        response = self.client.post("/api/v1/auth/login", json={
+            "username": "testuser",
+            "password": "password123"
+        })
+        self.token = response.json()["data"]["access_token"]
+    
+    @task(3)
+    def get_games(self):
+        self.client.get("/api/v1/games", headers={
+            "Authorization": f"Bearer {self.token}"
+        })
+    
+    @task(1)
+    def get_wallet(self):
+        self.client.get("/api/v1/wallet/balance", headers={
+            "Authorization": f"Bearer {self.token}"
+        })
+```
+
+Run load test:
 ```bash
-locust -f locustfile.py \
-  --host=http://localhost:8000 \
-  --users 100 \
-  --spawn-rate 10 \
-  --run-time 10m
+locust -f locustfile.py --host=http://localhost:8000
 ```
-
-#### Spike Test
-
-```bash
-locust -f locustfile.py \
-  --host=http://localhost:8000 \
-  --users 500 \
-  --spawn-rate 50 \
-  --run-time 2m
-```
-
-#### Soak Test (Endurance)
-
-```bash
-locust -f locustfile.py \
-  --host=http://localhost:8000 \
-  --users 50 \
-  --spawn-rate 5 \
-  --run-time 2h
-```
-
-### Metrics to Monitor
-
-- **Response Time:** p50, p95, p99
-- **Requests per Second (RPS)**
-- **Failure Rate**
-- **Concurrent Users**
-- **CPU Usage**
-- **Memory Usage**
-- **Database Connections**
 
 ### Performance Targets
 
-| Metric | Target | Max Acceptable |
-|--------|--------|----------------|
-| API Response Time (p95) | <200ms | <500ms |
-| Page Load Time | <2s | <3s |
-| Concurrent Users | 1000+ | - |
-| Throughput | 100+ RPS | - |
-| Error Rate | <0.1% | <1% |
+- **API Response Time**: < 200ms (p95)
+- **Database Queries**: < 50ms average
+- **Concurrent Users**: 10,000+
+- **Requests per Second**: 1,000+
+- **Error Rate**: < 0.1%
 
----
+## Security Testing
 
-## CI/CD Testing
+### OWASP ZAP Testing
 
-Tests run automatically on every push via GitHub Actions.
+```bash
+# Automated scan
+zap-cli quick-scan -s all http://localhost:8000
 
-### CI Workflow
-
-`.github/workflows/ci.yml` runs:
-
-1. **Linting** - Code quality checks
-2. **Unit Tests** - Backend tests with coverage
-3. **Security Scanning** - Dependency vulnerabilities
-4. **Docker Build** - Verify images build successfully
-
-### Viewing CI Results
-
-1. Go to GitHub repository
-2. Click "Actions" tab
-3. Select workflow run
-4. View logs and test results
-
-### Coverage Reports
-
-Coverage reports are uploaded to Codecov:
-
-```
-https://codecov.io/gh/your-username/gaming_app
+# Full scan
+zap-cli active-scan http://localhost:8000/api/v1/*
 ```
 
----
+### Security Checklist
 
-## Test Coverage
+- [ ] SQL Injection protection
+- [ ] XSS prevention
+- [ ] CSRF tokens
+- [ ] Authentication bypass attempts
+- [ ] Authorization checks
+- [ ] Rate limiting
+- [ ] Input validation
+- [ ] Secure headers
+- [ ] Secrets in code
+- [ ] Dependency vulnerabilities
 
-### Current Coverage
+### Manual Security Tests
 
-| Component | Coverage | Target |
-|-----------|----------|--------|
-| Backend API | ~70% | >80% |
-| Business Logic | ~60% | >80% |
-| Frontend Components | ~40% | >70% |
-| E2E Flows | ~80% | >90% |
+```bash
+# Test SQL injection
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -d '{"username": "admin'\'' OR '\''1'\''='\''1", "password": "test"}'
 
-### Improving Coverage
+# Test XSS
+curl -X POST http://localhost:8000/api/v1/users/profile \
+  -H "Authorization: Bearer TOKEN" \
+  -d '{"display_name": "<script>alert(1)</script>"}'
 
-1. **Identify Gaps**
-   ```bash
-   pytest --cov --cov-report=term-missing
-   ```
+# Test rate limiting
+for i in {1..100}; do
+  curl http://localhost:8000/api/v1/auth/login
+done
+```
 
-2. **Write Missing Tests**
-   - Focus on critical paths first
-   - Test edge cases
-   - Test error handling
+## CI/CD Integration
 
-3. **Review Coverage Reports**
-   - Check HTML coverage report
-   - Look for untested lines
-   - Prioritize high-risk code
+### GitHub Actions
 
----
+Tests run automatically on:
+- Every push to main
+- Every pull request
+- Scheduled daily runs
+
+```yaml
+# .github/workflows/test.yml
+name: Tests
+on: [push, pull_request]
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run tests
+        run: |
+          cd backend
+          pip install -r requirements.txt
+          pytest --cov --cov-report=xml
+      - name: Upload coverage
+        uses: codecov/codecov-action@v2
+
+  mobile-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: subosito/flutter-action@v2
+      - name: Run tests
+        run: |
+          cd mobile_app
+          flutter test --coverage
+```
 
 ## Best Practices
 
 ### General
 
-1. **Descriptive Names** - Test names should describe what they test
-2. **One Assertion per Test** - Keep tests focused
-3. **Independent Tests** - Tests should not depend on each other
-4. **Fast Tests** - Keep unit tests under 100ms
-5. **Mock External Services** - Don't rely on external APIs
+1. **Write tests first** (TDD approach)
+2. **Keep tests independent** - no test dependencies
+3. **Use meaningful names** - describe what is being tested
+4. **Test edge cases** - not just happy paths
+5. **Mock external services** - don't depend on third parties
+6. **Keep tests fast** - unit tests should run in milliseconds
+7. **Clean up after tests** - reset database, clear caches
+8. **Use fixtures** - DRY principle for test data
+9. **Document complex tests** - explain the why, not the what
+10. **Review test failures** - don't ignore failing tests
 
-### Backend
-
-```python
-# ❌ Bad
-def test_stuff():
-    user = create_user()
-    assert user
-
-# ✅ Good
-@pytest.mark.asyncio
-async def test_create_user_returns_user_with_id(db_session):
-    """Test that creating a user returns a user object with an ID"""
-    user = User(username="test", phone="+1234567890")
-    db_session.add(user)
-    await db_session.commit()
-    await db_session.refresh(user)
-
-    assert user.id is not None
-    assert isinstance(user.id, uuid.UUID)
-```
-
-### Frontend E2E
-
-```typescript
-// ❌ Bad
-test('test1', async ({ page }) => {
-  await page.goto('/');
-  await page.click('button');
-});
-
-// ✅ Good
-test('should submit login form when valid credentials provided', async ({ page }) => {
-  await page.goto('/');
-
-  await page.getByLabel('Username').fill('testuser');
-  await page.getByLabel('Password').fill('password123');
-  await page.getByRole('button', { name: /login/i }).click();
-
-  await expect(page).toHaveURL('/dashboard');
-  await expect(page.getByText(/welcome/i)).toBeVisible();
-});
-```
-
-### Test Data
+### Test Organization
 
 ```python
-# ❌ Bad - Hard-coded values
-def test_user():
-    user = User(username="john", email="john@test.com")
-
-# ✅ Good - Use factories or fixtures
-@pytest.fixture
-def test_user_data():
-    return {
-        "username": f"user_{uuid.uuid4().hex[:8]}",
-        "email": f"test_{uuid.uuid4().hex[:8]}@example.com",
-        "phone": f"+91{random.randint(1000000000, 9999999999)}"
-    }
+# Good test structure
+def test_user_registration_with_valid_data_creates_new_user():
+    """
+    Given: Valid user registration data
+    When: POST /api/v1/auth/register is called
+    Then: New user is created with status 201
+    """
+    # Arrange
+    user_data = {...}
+    
+    # Act
+    response = client.post("/api/v1/auth/register", json=user_data)
+    
+    # Assert
+    assert response.status_code == 201
+    assert "user" in response.json()["data"]
 ```
 
----
+### Coverage Guidelines
+
+- Aim for high coverage but don't obsess over 100%
+- Focus on critical business logic
+- Don't test framework code
+- Test error handling and edge cases
+- Review uncovered lines regularly
+
+### Common Pitfalls
+
+❌ **Don't:**
+- Test implementation details
+- Write flaky tests
+- Share state between tests
+- Test too many things in one test
+- Ignore slow tests
+- Skip writing tests for bug fixes
+
+✅ **Do:**
+- Test behavior, not implementation
+- Make tests deterministic
+- Isolate tests completely
+- One assertion per test (when possible)
+- Optimize slow tests
+- Add regression tests for bugs
 
 ## Troubleshooting
 
-### Backend Tests Failing
+### Common Issues
 
-**Issue:** Database connection errors
+**Tests fail locally but pass in CI:**
+- Check environment variables
+- Verify dependencies versions
+- Check database state
 
-```bash
-# Check database is running
-docker ps | grep postgres
+**Flaky tests:**
+- Add proper waits for async operations
+- Fix race conditions
+- Remove dependency on external services
 
-# Reset test database
-docker exec -it gaming_postgres_test psql -U test_user -c "DROP DATABASE IF EXISTS gaming_test; CREATE DATABASE gaming_test;"
-```
+**Slow tests:**
+- Use fixtures efficiently
+- Mock heavy operations
+- Run tests in parallel
 
-**Issue:** Import errors
+**Low coverage:**
+- Identify untested areas
+- Prioritize critical paths
+- Add integration tests
 
-```bash
-# Install dependencies
-pip install -r requirements.txt
+## Resources
 
-# Check Python path
-export PYTHONPATH="${PYTHONPATH}:$(pwd)/backend"
-```
-
-### E2E Tests Failing
-
-**Issue:** Element not found
-
-```typescript
-// Use waitFor to wait for elements
-await page.getByRole('button').waitFor({ state: 'visible' });
-
-// Increase timeout
-await expect(page.getByText('Hello')).toBeVisible({ timeout: 10000 });
-```
-
-**Issue:** Flaky tests
-
-```typescript
-// Wait for network idle
-await page.goto('/dashboard', { waitUntil: 'networkidle' });
-
-// Wait for specific API calls
-await page.waitForResponse((response) =>
-  response.url().includes('/api/v1/user') && response.status() === 200
-);
-```
-
-### Load Tests Failing
-
-**Issue:** High failure rate
-
-- Check server logs
-- Increase server resources
-- Reduce spawn rate
-- Check database connections
-
-**Issue:** Timeouts
-
-- Increase timeout in Locust
-- Optimize slow endpoints
-- Add caching
-- Scale database
-
----
-
-## Running All Tests
-
-### Quick Test Suite
-
-```bash
-# Backend unit tests (fast)
-cd backend && pytest -x
-
-# Frontend E2E (critical paths only)
-cd frontend && npx playwright test --grep @critical
-```
-
-### Full Test Suite
-
-```bash
-# Backend tests with coverage
-cd backend
-pytest --cov --cov-report=html
-
-# Frontend E2E tests (all browsers)
-cd frontend
-npx playwright test
-
-# Admin E2E tests
-cd frontend-admin
-npx playwright test
-
-# Load tests (light load)
-cd load-tests
-locust -f locustfile.py --host=http://localhost:8000 --users 10 --spawn-rate 2 --run-time 2m --headless
-```
-
----
-
-## Test Checklist
-
-Before deployment:
-
-- [ ] All unit tests passing
-- [ ] All integration tests passing
-- [ ] All E2E tests passing
-- [ ] Code coverage >80%
-- [ ] Load tests show acceptable performance
-- [ ] Security scans pass
-- [ ] No critical bugs in issue tracker
-- [ ] Manual testing of critical flows completed
-
----
+- [pytest Documentation](https://docs.pytest.org/)
+- [Flutter Testing](https://flutter.dev/docs/testing)
+- [Postman Learning](https://learning.postman.com/)
+- [Locust Documentation](https://docs.locust.io/)
+- [OWASP Testing Guide](https://owasp.org/www-project-web-security-testing-guide/)
 
 ## Support
 
 For testing issues:
-- Check CI/CD logs on GitHub Actions
-- Review test output and stack traces
-- Check this guide for common issues
-- Run tests locally with verbose output
+1. Check this guide first
+2. Review test logs
+3. Check CI/CD pipeline
+4. Consult team documentation
+5. Ask in team chat
 
 ---
 
-**Last Updated:** November 16, 2025
-**Next Review:** Before Production Launch
+**Last Updated**: 2025-11-17  
+**Maintainers**: Development Team
