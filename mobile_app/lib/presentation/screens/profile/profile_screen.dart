@@ -16,6 +16,8 @@ import 'kyc_verification_screen.dart';
 import 'game_history_screen.dart';
 import '../settings/settings_screen.dart';
 import '../referral/referral_screen.dart';
+import '../support/help_support_screen.dart';
+import '../support/about_screen.dart';
 
 /// Profile screen displaying user information and statistics
 class ProfileScreen extends StatefulWidget {
@@ -393,13 +395,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'icon': Icons.help_outline,
         'title': 'Help & Support',
         'subtitle': 'Get help with your account',
-        'onTap': () {},
+        'onTap': () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const HelpSupportScreen(),
+            ),
+          );
+        },
       },
       {
         'icon': Icons.info_outline,
         'title': 'About',
         'subtitle': 'App version and info',
-        'onTap': () {},
+        'onTap': () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const AboutScreen(),
+            ),
+          );
+        },
       },
       {
         'icon': Icons.logout,
