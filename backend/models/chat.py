@@ -67,7 +67,7 @@ class Message(Base):
     # Message content
     message_type = Column(String(50), default="text")  # text, image, game_invite, system
     content = Column(Text)
-    metadata = Column(JSONB)  # For images, game invites, etc.
+    message_metadata = Column(JSONB)  # For images, game invites, etc.
 
     # Status
     is_edited = Column(Boolean, default=False)
@@ -95,7 +95,7 @@ class Message(Base):
             "sender_id": str(self.sender_id),
             "message_type": self.message_type,
             "content": self.content,
-            "metadata": self.metadata,
+            "metadata": self.message_metadata,
             "is_edited": self.is_edited,
             "is_deleted": self.is_deleted,
             "sent_at": self.sent_at.isoformat(),

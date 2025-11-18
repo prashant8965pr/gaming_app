@@ -1,7 +1,7 @@
 """
 Token system models for practice games and rewards
 """
-from sqlalchemy import Column, String, Integer, DateTime, JSON, ForeignKey, Text
+from sqlalchemy import Column, String, Integer, DateTime, JSON, ForeignKey, Text, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -75,7 +75,7 @@ class TokenTransaction(Base):
     
     # Related entities
     related_id = Column(UUID(as_uuid=True))  # Achievement ID, game session ID, etc.
-    metadata = Column(JSON)  # Additional data
+    transaction_metadata = Column(JSON)  # Additional data
     
     # Balance after transaction
     balance_after = Column(Integer)
@@ -100,7 +100,7 @@ class TokenTransaction(Base):
             "source": self.source,
             "description": self.description,
             "related_id": str(self.related_id) if self.related_id else None,
-            "metadata": self.metadata,
+            "metadata": self.transaction_metadata,
             "balance_after": self.balance_after,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }

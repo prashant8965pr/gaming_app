@@ -43,7 +43,7 @@ class KYCDocument(Base):
     admin_notes = Column(Text, nullable=True)
 
     # Metadata
-    metadata = Column(JSONB, default={}, nullable=True)  # Additional data from verification API
+    document_metadata = Column(JSONB, default={}, nullable=True)  # Additional data from verification API
     ip_address = Column(String(50), nullable=True)
 
     # Timestamps
@@ -86,7 +86,7 @@ class BankAccount(Base):
     status = Column(String(20), default="active")  # active, inactive, suspended
 
     # Metadata
-    metadata = Column(JSONB, default={}, nullable=True)
+    document_metadata = Column(JSONB, default={}, nullable=True)
 
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
