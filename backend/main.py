@@ -20,7 +20,11 @@ from middleware.error_handler import (
 from middleware.logging_middleware import LoggingMiddleware
 
 # Import API routers
-from api.v1 import auth, users, kyc, bank, wallet, admin, rewards, games, websocket, two_factor, promo_codes
+from api.v1 import (
+    auth, users, kyc, bank, wallet, admin, rewards, games, websocket,
+    two_factor, promo_codes, chat, friends, live_stream, notifications,
+    tokens, tournaments
+)
 
 
 @asynccontextmanager
@@ -204,6 +208,12 @@ app.include_router(wallet.router, prefix="/api/v1/wallet", tags=["Wallet"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
 app.include_router(rewards.router, prefix="/api/v1/rewards", tags=["Rewards"])
 app.include_router(games.router, prefix="/api/v1/games", tags=["Games"])
+app.include_router(chat.router, prefix="/api/v1/chat", tags=["Chat & Messaging"])
+app.include_router(friends.router, prefix="/api/v1/friends", tags=["Friends"])
+app.include_router(tournaments.router, prefix="/api/v1/tournaments", tags=["Tournaments"])
+app.include_router(tokens.router, prefix="/api/v1/tokens", tags=["Token Wallet"])
+app.include_router(live_stream.router, prefix="/api/v1/live-stream", tags=["Live Streaming"])
+app.include_router(notifications.router, prefix="/api/v1/notifications", tags=["Notifications"])
 app.include_router(websocket.router, prefix="/api/v1", tags=["WebSocket"])
 app.include_router(two_factor.router, prefix="/api/v1/2fa", tags=["Two-Factor Authentication"])
 app.include_router(promo_codes.router, prefix="/api/v1", tags=["Promo Codes"])
