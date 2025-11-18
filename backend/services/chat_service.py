@@ -104,7 +104,7 @@ class ChatService:
             sender_id=sender_id,
             message_type=message_type,
             content=content,
-            metadata=metadata
+            message_metadata=metadata
         )
 
         db.add(message)
