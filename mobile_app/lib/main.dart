@@ -5,13 +5,15 @@ import 'core/di/service_locator.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
-import 'presentation/bloc/auth/auth_bloc.dart';
-import 'presentation/bloc/user/user_bloc.dart';
-import 'presentation/bloc/wallet/wallet_bloc.dart';
-import 'presentation/bloc/game/game_bloc.dart';
-import 'presentation/bloc/theme/theme_bloc.dart';
-import 'presentation/bloc/theme/theme_event.dart';
-import 'presentation/bloc/theme/theme_state.dart';
+import 'presentation/blocs/auth/auth_bloc.dart';
+import 'presentation/blocs/wallet/wallet_bloc.dart';
+import 'presentation/blocs/game/game_bloc.dart';
+import 'presentation/blocs/chat/chat_bloc.dart';
+import 'presentation/blocs/tournament/tournament_bloc.dart';
+import 'presentation/blocs/token/token_bloc.dart';
+import 'presentation/blocs/friends/friends_bloc.dart';
+import 'presentation/blocs/rewards/rewards_bloc.dart';
+import 'presentation/blocs/kyc/kyc_bloc.dart';
 
 void main() async {
   // Ensure Flutter binding is initialized
@@ -62,29 +64,39 @@ class MyApp extends StatelessWidget {
         BlocProvider<AuthBloc>(
           create: (_) => sl<AuthBloc>(),
         ),
-        BlocProvider<ThemeBloc>(
-          create: (_) => sl<ThemeBloc>()..add(const LoadSavedThemeEvent()),
-        ),
-        BlocProvider<UserBloc>(
-          create: (_) => sl<UserBloc>(),
-        ),
         BlocProvider<WalletBloc>(
           create: (_) => sl<WalletBloc>(),
         ),
         BlocProvider<GameBloc>(
           create: (_) => sl<GameBloc>(),
         ),
+        BlocProvider<ChatBloc>(
+          create: (_) => sl<ChatBloc>(),
+        ),
+        BlocProvider<TournamentBloc>(
+          create: (_) => sl<TournamentBloc>(),
+        ),
+        BlocProvider<TokenBloc>(
+          create: (_) => sl<TokenBloc>(),
+        ),
+        BlocProvider<FriendsBloc>(
+          create: (_) => sl<FriendsBloc>(),
+        ),
+        BlocProvider<RewardsBloc>(
+          create: (_) => sl<RewardsBloc>(),
+        ),
+        BlocProvider<KycBloc>(
+          create: (_) => sl<KycBloc>(),
+        ),
       ],
-      child: BlocBuilder<ThemeBloc, ThemeState>(
-        builder: (context, themeState) {
-          return MaterialApp.router(
-            title: AppConstants.appName,
-            debugShowCheckedModeBanner: false,
+      child: MaterialApp.router(
+        title: AppConstants.appName,
+        debugShowCheckedModeBanner: false,
 
-            // Theme
-            theme: AppTheme.lightTheme(),
-            darkTheme: AppTheme.darkTheme(),
-            themeMode: themeState.themeMode,
+        // Theme
+        theme: AppTheme.lightTheme(),
+        darkTheme: AppTheme.darkTheme(),
+        themeMode: ThemeMode.system,
 
         // Router
         routerConfig: AppRouter.router,
@@ -101,8 +113,6 @@ class MyApp extends StatelessWidget {
           return MediaQuery(
             data: MediaQuery.of(context).copyWith(textScaleFactor: 1.0),
             child: child!,
-          );
-        },
           );
         },
       ),
